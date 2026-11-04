@@ -210,12 +210,6 @@
           </a>
         </li>
         <li>
-          <a href="meal-planner.html" class="nav-link">
-            <span class="nav-link-icon">📅</span>
-            <span>Meal Planner</span>
-          </a>
-        </li>
-        <li>
           <a href="water-tracker.html" class="nav-link">
             <span class="nav-link-icon">💧</span>
             <span>Water Tracker</span>
@@ -229,7 +223,7 @@
         </li>
         <li>
           <a href="assistant.html" class="nav-link">
-            <span class="nav-link-icon">⚡</span>
+            <span class="nav-link-icon">🤖</span>
             <span>AI Nutrition Assistant</span>
           </a>
         </li>
@@ -269,8 +263,8 @@
         </div>
       </header>
 
-      <!-- 4 Top Metric Cards -->
-      <div class="dashboard-grid">
+      <!-- Top Metric Cards (Energy & Hydration) -->
+      <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));">
         <!-- Calorie Card -->
         <div class="metric-card">
           <div class="metric-header">
@@ -308,41 +302,6 @@
           </div>
           <div class="progress-bar-bg">
             <div class="progress-bar-fill" id="card-water-bar" style="width: 0%; background: linear-gradient(90deg, #06b6d4 0%, #3b82f6 100%);"></div>
-          </div>
-        </div>
-
-        <!-- Biometrics Card -->
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">Body Biometrics</span>
-            <span class="metric-icon">⚖️</span>
-          </div>
-          <div class="metric-value">
-            <span id="card-weight">--</span> <span style="font-size: 16px; color: var(--text-muted); font-weight: 500;">kg</span>
-          </div>
-          <div class="metric-sub">
-            Height: <span id="card-height" style="color: var(--text-main); font-weight: 600;">-- cm</span> • 
-            BMI: <span id="card-bmi-badge" class="ai-badge badge-balanced" style="font-size: 11px; padding: 2px 6px;">--</span>
-          </div>
-          <div style="margin-top: 14px; font-size: 12px; color: var(--text-dim);">
-            Mifflin-St Jeor BMR: <span id="card-bmr" style="color: var(--text-muted); font-weight: 600;">-- kcal</span>
-          </div>
-        </div>
-
-        <!-- Target Goal Card -->
-        <div class="metric-card">
-          <div class="metric-header">
-            <span class="metric-title">Metabolic Goal</span>
-            <span class="metric-icon">🎯</span>
-          </div>
-          <div class="metric-value" style="font-size: 22px; text-transform: capitalize;" id="card-goal-name">
-            Maintenance
-          </div>
-          <div class="metric-sub">
-            TDEE Baseline: <span id="card-tdee" style="color: var(--text-main); font-weight: 600;">-- kcal</span>
-          </div>
-          <div style="margin-top: 14px; font-size: 12px; color: var(--text-dim);" id="card-goal-delta">
-            Surplus/Deficit: <span style="color: var(--primary-light); font-weight: 600;">Optimal targets active</span>
           </div>
         </div>
       </div>
@@ -396,63 +355,22 @@
         </div>
       </div>
 
-      <!-- Split Layout: Today's Meals & AI Insights -->
-      <div class="main-two-col">
-        <!-- Left: Today's Logged Meals -->
-        <div class="card">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px;">
-            <div>
-              <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 700;">Today's Logged Meals</h3>
-              <p style="color: var(--text-muted); font-size: 13px;">Meal slots with dynamically scaled portion nutrition.</p>
-            </div>
-            <a href="food-tracker.html" class="btn btn-secondary btn-sm">+ Add Item</a>
+      <!-- Today's Logged Meals (Full Interactive Centerpiece) -->
+      <div class="card" style="margin-top: 24px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; flex-wrap: wrap; gap: 12px;">
+          <div>
+            <h3 style="font-family: var(--font-heading); font-size: 20px; font-weight: 700;">Today's Logged Meals</h3>
+            <p style="color: var(--text-muted); font-size: 13px;">Overview of meal slots with real-time nutrient scaling.</p>
           </div>
-
-          <div id="meals-list-container">
-            <div style="text-align: center; padding: 24px; color: var(--text-muted);">Loading logged meals...</div>
+          <div style="display: flex; gap: 10px;">
+            <a href="food-tracker.html" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 6px;">
+              <span>+</span> Log Meal
+            </a>
           </div>
         </div>
 
-        <!-- Right: AI Insight & Matplotlib Chart Preview -->
-        <div style="display: flex; flex-direction: column; gap: 20px;">
-          <!-- AI Insight Card -->
-          <div class="card" style="border-color: rgba(16, 185, 129, 0.3); background: linear-gradient(135deg, rgba(16, 24, 40, 0.85) 0%, rgba(13, 20, 36, 0.95) 100%);">
-            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
-              <div>
-                <span style="font-size: 11px; text-transform: uppercase; color: var(--primary-light); font-weight: 700; letter-spacing: 0.5px;">Machine Learning Diagnostic</span>
-                <h4 style="font-family: var(--font-heading); font-size: 17px; font-weight: 700; margin-top: 2px;" id="ai-gap-title">
-                  Analyzing Intake...
-                </h4>
-              </div>
-              <span id="ai-gap-badge" class="ai-badge badge-balanced">AI Active</span>
-            </div>
-
-            <p style="font-size: 13px; color: var(--text-muted); line-height: 1.5; margin-bottom: 16px;" id="ai-gap-desc">
-              Evaluating current caloric and macronutrient distribution against personal metabolic baseline.
-            </p>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; padding-top: 12px; border-top: 1px solid var(--bg-card-border);">
-              <span style="font-size: 12px; color: var(--text-dim);" id="ai-model-tag">v2.0-trained_random_forest_and_dnn</span>
-              <a href="assistant.html" class="btn btn-primary btn-sm" style="padding: 5px 12px; font-size: 12px;">
-                View AI Suggestions →
-              </a>
-            </div>
-          </div>
-
-          <!-- Matplotlib Chart Preview Card -->
-          <div class="card">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-              <div>
-                <h4 style="font-family: var(--font-heading); font-size: 16px; font-weight: 700;">Matplotlib Analytics</h4>
-                <p style="color: var(--text-muted); font-size: 12px;">Server-side publication-grade visualization</p>
-              </div>
-              <a href="progress.html" class="btn btn-secondary btn-sm" style="font-size: 11px;">View All Charts</a>
-            </div>
-
-            <div id="chart-preview-container" style="text-align: center; border-radius: var(--radius-md); overflow: hidden; background: #0d1424; border: 1px solid rgba(255, 255, 255, 0.05); min-height: 180px; display: flex; align-items: center; justify-content: center;">
-              <img id="dashboard-daily-chart" src="/api/analytics/static/daily_calories_1.png" alt="Daily Calorie Fulfillment Chart" style="width: 100%; height: auto; display: block;" onerror="this.parentElement.innerHTML='<div style=\'padding:20px;color:var(--text-dim);font-size:13px;\'>Chart will render as meals are logged.<br><a href=\'progress.html\' style=\'color:var(--primary);\'>Generate in Progress Analytics</a></div>';">
-            </div>
-          </div>
+        <div id="meals-list-container">
+          <div style="text-align: center; padding: 24px; color: var(--text-muted);">Loading logged meals...</div>
         </div>
       </div>
     </main>

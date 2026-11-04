@@ -52,12 +52,6 @@
           </a>
         </li>
         <li>
-          <a href="meal-planner.html" class="nav-link">
-            <span class="nav-link-icon">📅</span>
-            <span>Meal Planner</span>
-          </a>
-        </li>
-        <li>
           <a href="water-tracker.html" class="nav-link">
             <span class="nav-link-icon">💧</span>
             <span>Water Tracker</span>
@@ -71,7 +65,7 @@
         </li>
         <li>
           <a href="assistant.html" class="nav-link">
-            <span class="nav-link-icon">⚡</span>
+            <span class="nav-link-icon">🤖</span>
             <span>AI Nutrition Assistant</span>
           </a>
         </li>
@@ -121,31 +115,38 @@
             <div class="biometric-grid">
               <div class="form-group">
                 <label class="form-label" for="profile-age">Age (Years)</label>
-                <input type="number" id="profile-age" class="form-control" min="12" max="120" placeholder="25" required>
+                <input type="number" id="profile-age" class="form-control" min="12" max="120" placeholder="25" value="25" required>
               </div>
 
               <div class="form-group">
                 <label class="form-label" for="profile-gender">Gender</label>
                 <select id="profile-gender" class="form-select" required>
-                  <option value="" disabled selected>Select Gender</option>
-                  <option value="male">Male</option>
+                  <option value="male" selected>Male</option>
                   <option value="female">Female</option>
                   <option value="other">Other / Prefer not to say</option>
                 </select>
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="profile-height">Height (cm)</label>
-                <input type="number" step="0.1" id="profile-height" class="form-control" min="50" max="280" placeholder="175" required>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label class="form-label" for="profile-height">Height (cm)</label>
+                  <span id="height-val-display" style="font-weight: 700; color: var(--primary-light); font-size: 13px;">175 cm</span>
+                </div>
+                <input type="number" step="0.5" id="profile-height" class="form-control" min="100" max="250" placeholder="175" value="175" required>
+                <input type="range" id="profile-height-slider" min="120" max="220" value="175" style="width: 100%; margin-top: 6px; accent-color: var(--primary); cursor: pointer;">
               </div>
 
               <div class="form-group">
-                <label class="form-label" for="profile-weight">Weight (kg)</label>
-                <input type="number" step="0.1" id="profile-weight" class="form-control" min="25" max="350" placeholder="70" required>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                  <label class="form-label" for="profile-weight">Weight (kg)</label>
+                  <span id="weight-val-display" style="font-weight: 700; color: var(--primary-light); font-size: 13px;">70.0 kg</span>
+                </div>
+                <input type="number" step="0.1" id="profile-weight" class="form-control" min="30" max="250" placeholder="70" value="70" required>
+                <input type="range" id="profile-weight-slider" min="35" max="160" step="0.5" value="70" style="width: 100%; margin-top: 6px; accent-color: var(--primary); cursor: pointer;">
               </div>
             </div>
 
-            <div class="form-group">
+            <div class="form-group" style="margin-top: 14px;">
               <label class="form-label" for="profile-activity">Physical Activity Level</label>
               <select id="profile-activity" class="form-select" required>
                 <option value="sedentary">Sedentary (Little or no exercise, desk job)</option>
@@ -156,16 +157,30 @@
               </select>
             </div>
 
-            <div class="form-group">
-              <label class="form-label" for="profile-goal">Primary Fitness Goal</label>
-              <select id="profile-goal" class="form-select" required>
-                <option value="weight_loss">Weight Loss (-500 kcal healthy deficit)</option>
-                <option value="weight_maintenance" selected>Weight Maintenance (Maintain current weight)</option>
-                <option value="lean_muscle_gain">Lean Muscle Gain (+350 kcal controlled surplus)</option>
-              </select>
+            <!-- Interactive Fitness Goal Cards -->
+            <div class="form-group" style="margin-top: 18px;">
+              <label class="form-label">Primary Fitness Goal (Interactive Selection)</label>
+              <input type="hidden" id="profile-goal" value="weight_maintenance">
+              <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; margin-top: 6px;">
+                <div class="goal-card" data-goal="weight_loss" style="cursor: pointer; border: 1px solid var(--bg-card-border); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-md); padding: 12px; text-align: center; transition: all 0.2s ease;">
+                  <div style="font-size: 22px; margin-bottom: 4px;">📉</div>
+                  <div style="font-size: 13px; font-weight: 700; color: #ffffff;">Weight Loss</div>
+                  <div style="font-size: 11px; color: #f87171; margin-top: 2px;">-500 kcal Deficit</div>
+                </div>
+                <div class="goal-card active" data-goal="weight_maintenance" style="cursor: pointer; border: 1px solid var(--primary); background: rgba(16, 185, 129, 0.12); border-radius: var(--radius-md); padding: 12px; text-align: center; transition: all 0.2s ease;">
+                  <div style="font-size: 22px; margin-bottom: 4px;">⚖️</div>
+                  <div style="font-size: 13px; font-weight: 700; color: #ffffff;">Maintenance</div>
+                  <div style="font-size: 11px; color: var(--primary-light); margin-top: 2px;">Maintain Balance</div>
+                </div>
+                <div class="goal-card" data-goal="lean_muscle_gain" style="cursor: pointer; border: 1px solid var(--bg-card-border); background: rgba(255, 255, 255, 0.03); border-radius: var(--radius-md); padding: 12px; text-align: center; transition: all 0.2s ease;">
+                  <div style="font-size: 22px; margin-bottom: 4px;">🏋️</div>
+                  <div style="font-size: 13px; font-weight: 700; color: #ffffff;">Muscle Gain</div>
+                  <div style="font-size: 11px; color: #60a5fa; margin-top: 2px;">+350 kcal Surplus</div>
+                </div>
+              </div>
             </div>
 
-            <button type="submit" id="save-profile-btn" class="btn btn-primary btn-block" style="padding: 13px; margin-top: 10px;">
+            <button type="submit" id="save-profile-btn" class="btn btn-primary btn-block" style="padding: 13px; margin-top: 22px;">
               Save Profile & Recalculate Goals
             </button>
           </form>
@@ -176,9 +191,9 @@
           <div class="goals-preview-header">
             <div>
               <h3 style="font-size: 18px; margin-bottom: 4px;">Personalized Metabolic Targets</h3>
-              <p style="color: var(--text-muted); font-size: 13px;">Computed with Mifflin-St Jeor Equation</p>
+              <p style="color: var(--text-muted); font-size: 13px;">Live interactive calculations</p>
             </div>
-            <span class="badge badge-success" id="goal-badge">Calculated</span>
+            <span class="badge badge-success" id="goal-badge">Interactive Live</span>
           </div>
 
           <!-- Hero Calorie Display -->
@@ -203,6 +218,25 @@
             </div>
           </div>
 
+          <!-- Live Interactive BMI Meter -->
+          <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--bg-card-border); border-radius: var(--radius-md); padding: 16px; margin: 18px 0;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <span style="font-size: 13px; font-weight: 600; color: var(--text-muted);">Body Mass Index (BMI)</span>
+              <span id="bmi-status-badge" class="badge badge-success" style="font-size: 12px;">Normal</span>
+            </div>
+            <div style="font-size: 24px; font-weight: 800; color: #ffffff; margin-bottom: 8px;" id="bmi-score-text">22.9</div>
+            <!-- Visual Bar -->
+            <div style="height: 8px; border-radius: 4px; background: linear-gradient(90deg, #3b82f6 0%, #10b981 30%, #f59e0b 70%, #ef4444 100%); position: relative; margin-top: 8px;">
+              <div id="bmi-indicator-pin" style="position: absolute; top: -4px; width: 4px; height: 16px; background: #ffffff; border-radius: 2px; box-shadow: 0 0 8px #ffffff; left: 40%; transition: left 0.3s ease;"></div>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 10px; color: var(--text-dim); margin-top: 6px;">
+              <span>Underweight (&lt;18.5)</span>
+              <span>Normal (18.5-24.9)</span>
+              <span>Overweight (25-29.9)</span>
+              <span>Obese (&ge;30)</span>
+            </div>
+          </div>
+
           <!-- Metabolic Chips -->
           <div class="metabolic-chips">
             <div class="metabolic-chip">
@@ -216,15 +250,6 @@
             </div>
             <div class="metabolic-chip">
               Hydration: <strong id="chip-water">--</strong> ml
-            </div>
-          </div>
-
-          <!-- Clinical Disclaimer -->
-          <div class="medical-disclaimer">
-            <span style="font-size: 16px;">⚕️</span>
-            <div>
-              <strong>Academic & Health Disclaimer:</strong>
-              These nutritional targets are computed estimates based on the Mifflin-St Jeor metabolic equation and dietary guidelines. They are intended for educational and tracking purposes, not as medical prescriptions.
             </div>
           </div>
         </div>

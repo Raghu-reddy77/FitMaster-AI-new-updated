@@ -51,9 +51,26 @@
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(180deg, rgba(6, 182, 212, 0.6) 0%, rgba(59, 130, 246, 0.8) 100%);
+  background: linear-gradient(180deg, rgba(6, 182, 212, 0.75) 0%, rgba(59, 130, 246, 0.9) 100%);
   transition: height 0.6s cubic-bezier(0.16, 1, 0.3, 1);
   z-index: 1;
+}
+
+.water-fill-level::before {
+  content: '';
+  position: absolute;
+  top: -10px;
+  left: -50%;
+  width: 200%;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 40%;
+  animation: waveMotion 4s linear infinite;
+}
+
+@keyframes waveMotion {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .water-gauge-content {

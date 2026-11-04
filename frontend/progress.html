@@ -4,9 +4,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Progress Analytics – FitMaster AI</title>
-  <meta name="description" content="Server-side Matplotlib scientific data visualizations and weight progress tracking.">
+  <meta name="description" content="Interactive nutrition analytics, dynamic macronutrient breakdown, and bodyweight tracking.">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/responsive.css">
+  <!-- Chart.js for smooth client-side interactive visualizations -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     .analytics-nav {
       display: flex;
@@ -42,27 +44,42 @@
       border: 1px solid var(--bg-card-border);
       border-radius: var(--radius-lg);
       padding: 24px;
-      text-align: center;
       min-height: 420px;
+      position: relative;
       display: flex;
       flex-direction: column;
-      align-items: center;
       justify-content: center;
-      position: relative;
     }
-    .chart-stage img {
-      max-width: 100%;
-      height: auto;
+    .summary-kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--bg-card-border);
       border-radius: var(--radius-md);
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+      padding: 18px 20px;
     }
-    .chart-caption {
-      margin-top: 18px;
-      font-size: 13px;
+    .kpi-title {
+      font-size: 12px;
       color: var(--text-dim);
-      display: flex;
-      align-items: center;
-      gap: 12px;
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+    }
+    .kpi-value {
+      font-family: var(--font-heading);
+      font-size: 24px;
+      font-weight: 800;
+      margin-top: 4px;
+      color: #ffffff;
+    }
+    .kpi-sub {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 4px;
     }
     .weight-log-grid {
       display: grid;
@@ -126,12 +143,6 @@
           </a>
         </li>
         <li>
-          <a href="meal-planner.html" class="nav-link">
-            <span class="nav-link-icon">📅</span>
-            <span>Meal Planner</span>
-          </a>
-        </li>
-        <li>
           <a href="water-tracker.html" class="nav-link">
             <span class="nav-link-icon">💧</span>
             <span>Water Tracker</span>
@@ -145,7 +156,7 @@
         </li>
         <li>
           <a href="assistant.html" class="nav-link">
-            <span class="nav-link-icon">⚡</span>
+            <span class="nav-link-icon">🤖</span>
             <span>AI Nutrition Assistant</span>
           </a>
         </li>
@@ -170,49 +181,58 @@
       <header class="app-header" style="margin-bottom: 24px;">
         <div>
           <h1 style="font-family: var(--font-heading); font-size: 28px; font-weight: 800;">
-            Scientific Data Analytics & Visualizations
+            Interactive Progress Analytics
           </h1>
           <p style="color: var(--text-muted); font-size: 14px; margin-top: 4px;">
-            Publication-grade charts generated directly from database records via Python Matplotlib.
+            Dynamic real-time visualizations for calorie intake, macronutrients, and weight trajectory.
           </p>
         </div>
-        <button onclick="regenerateActiveChart()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 8px;">
-          <span>🔄</span> Refresh Chart
+        <button onclick="loadAnalyticsData()" class="btn btn-secondary" style="display: flex; align-items: center; gap: 8px;">
+          <span>🔄</span> Refresh Analytics
         </button>
       </header>
 
+      <!-- KPI Summary Cards -->
+      <div class="summary-kpi-grid">
+        <div class="kpi-card">
+          <div class="kpi-title">Average Daily Intake</div>
+          <div class="kpi-value" id="kpi-avg-calories">-- kcal</div>
+          <div class="kpi-sub">Target: <span id="kpi-target-calories">2000</span> kcal</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Average Daily Protein</div>
+          <div class="kpi-value" id="kpi-avg-protein" style="color: #60a5fa;">-- g</div>
+          <div class="kpi-sub">Target: <span id="kpi-target-protein">140</span> g</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Current Bodyweight</div>
+          <div class="kpi-value" id="kpi-current-weight" style="color: var(--primary-light);">-- kg</div>
+          <div class="kpi-sub" id="kpi-weight-change">Recorded measurements</div>
+        </div>
+        <div class="kpi-card">
+          <div class="kpi-title">Hydration Fulfillment</div>
+          <div class="kpi-value" id="kpi-hydration-rate" style="color: var(--accent-cyan);">--%</div>
+          <div class="kpi-sub">Daily target completion</div>
+        </div>
+      </div>
+
       <!-- Analytics Tabs -->
       <div class="analytics-nav">
-        <button class="analytics-tab active" data-chart="daily" onclick="switchChartTab('daily')">
-          <span>🎯</span> Daily Calorie & Macro Distribution
+        <button class="analytics-tab active" data-chart="macros" onclick="switchAnalyticsTab('macros')">
+          <span>🎯</span> Daily Nutrition & Macronutrients
         </button>
-        <button class="analytics-tab" data-chart="weekly" onclick="switchChartTab('weekly')">
-          <span>📅</span> 7-Day Caloric Trend
-        </button>
-        <button class="analytics-tab" data-chart="weight" onclick="switchChartTab('weight')">
+        <button class="analytics-tab" data-chart="weight" onclick="switchAnalyticsTab('weight')">
           <span>⚖️</span> Bodyweight Trajectory
         </button>
-        <button class="analytics-tab" data-chart="model" onclick="switchChartTab('model')">
-          <span>🤖</span> Neural Network Performance Curves
+        <button class="analytics-tab" data-chart="water" onclick="switchAnalyticsTab('water')">
+          <span>💧</span> Hydration Consistency
         </button>
       </div>
 
-      <!-- Main Chart Stage -->
+      <!-- Interactive Chart Canvas Stage -->
       <div class="chart-stage">
-        <div id="chart-loader" style="display: none; padding: 40px; color: var(--text-muted);">
-          Rendering Matplotlib visualization from database records...
-        </div>
-        <img id="main-analytics-chart" src="" alt="Scientific Matplotlib Analytics" style="display: none;">
-        <div id="model-multi-chart-container" style="display: none; width: 100%;">
-          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 16px;">
-            <img src="/api/analytics/static/model_loss_curve.png" alt="Model Loss" style="width: 100%;">
-            <img src="/api/analytics/static/model_accuracy_curve.png" alt="Model Accuracy" style="width: 100%;">
-            <img src="/api/analytics/static/model_confusion_matrix.png" alt="Confusion Matrix" style="width: 100%;">
-          </div>
-        </div>
-
-        <div class="chart-caption" id="chart-caption-text">
-          <span>🔬 Rendering Backend: Python 3.12 + Matplotlib Agg Engine (DPI: 150)</span>
+        <div style="position: relative; width: 100%; height: 360px;">
+          <canvas id="interactiveChartCanvas"></canvas>
         </div>
       </div>
 
@@ -229,17 +249,17 @@
 
           <form id="weight-log-form" onsubmit="handleWeightSubmit(event)">
             <div class="form-group" style="margin-bottom: 14px;">
-              <label class="form-label">Measurement Date</label>
+              <label class="form-label" for="weight-date">Measurement Date</label>
               <input type="date" id="weight-date" class="form-control" required>
             </div>
 
             <div class="form-group" style="margin-bottom: 14px;">
-              <label class="form-label">Weight (kg)</label>
-              <input type="number" id="weight-kg" step="0.1" min="30" max="300" placeholder="e.g. 75.2" class="form-control" required>
+              <label class="form-label" for="weight-kg">Weight (kg)</label>
+              <input type="number" id="weight-kg" step="0.1" min="30" max="300" placeholder="e.g. 70.5" class="form-control" required>
             </div>
 
             <div class="form-group" style="margin-bottom: 18px;">
-              <label class="form-label">Notes (Optional)</label>
+              <label class="form-label" for="weight-notes">Notes (Optional)</label>
               <input type="text" id="weight-notes" placeholder="e.g. Morning fasted weigh-in" class="form-control">
             </div>
 
@@ -255,7 +275,7 @@
             <h3 style="font-family: var(--font-heading); font-size: 18px; font-weight: 700;">
               Weigh-In History
             </h3>
-            <span style="font-size: 12px; color: var(--text-muted);" id="weight-count-label">5 entries</span>
+            <span style="font-size: 12px; color: var(--text-muted);" id="weight-count-label">0 entries</span>
           </div>
 
           <div style="overflow-x: auto;">
@@ -266,12 +286,13 @@
                   <th>Weight</th>
                   <th>Delta</th>
                   <th>Notes</th>
+                  <th>Action</th>
                 </tr>
               </thead>
               <tbody id="weight-history-tbody">
                 <tr>
-                  <td colspan="4" style="text-align: center; color: var(--text-muted); padding: 20px;">
-                    Loading history...
+                  <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">
+                    Loading weigh-in history...
                   </td>
                 </tr>
               </tbody>
@@ -285,5 +306,12 @@
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/progress.js"></script>
+  <script>
+    const toggleBtn = document.getElementById('mobile-toggle-btn');
+    const sidebar = document.getElementById('app-sidebar');
+    toggleBtn?.addEventListener('click', () => {
+      sidebar.classList.toggle('open');
+    });
+  </script>
 </body>
 </html>

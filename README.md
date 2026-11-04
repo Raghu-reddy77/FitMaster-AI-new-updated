@@ -21,23 +21,21 @@ Built with an academic focus on architectural modularity, mathematical rigor, cl
 
 ## 2. Key Modules & Features
 1. **User Authentication & Authorization**: Secure registration, login, logout, password hashing with bcrypt, JWT authorization header validation.
-2. **User Profile Management**: Age, gender, height (cm), weight (kg), physical activity tier, and fitness goals (Weight Loss, Weight Maintenance, Lean Muscle Gain).
-3. **Metabolic Nutrition Calculator**: Scientific BMI, BMR (Mifflin-St Jeor), TDEE, and personalized calorie/macro targets with explicit health disclaimers.
-4. **Food & Nutrition Tracker**: Substring search across real USDA and Indian databank records, manual serving size adjustment in grams ($g$), dynamic calorie/macro calculation, and meal slot allocation (Breakfast, Lunch, Dinner, Snacks). *(Strict requirement: No camera scanner or image-based recognition).*
-5. **Hydration Tracker**: Target intake based on body weight, quick-add volume logs (ml), remaining water calculation, and historical consumption metrics.
-6. **Intelligent Meal Planner**: Daily meal combination builder with remaining macro matching suggestions.
-7. **AI Nutrition Recommendation Engine**: Python microservice running Scikit-learn baseline and TensorFlow/Keras neural network models to detect dietary deficits and rank candidate foods.
-8. **Scientific Data Analytics (Matplotlib)**: Server-side generated publication-grade PNG charts showing daily calorie breakdowns, 7-day trends, 30-day macros, weight progress, and ML convergence curves.
-9. **Academic Computer Vision Research Module**: Isolated OpenCV research module for digital image filtering, edge detection, and segmentation.
+2. **Interactive User Profile Management**: Age, gender, height (cm), weight (kg), physical activity tier, and fitness goals with dual interactive sliders, real-time Mifflin-St Jeor calculations, and live BMI gauge.
+3. **Metabolic Nutrition Calculator**: Scientific BMI, BMR, TDEE, and personalized calorie/macro targets with explicit health disclaimers.
+4. **Interactive Food & Nutrition Tracker**: Instant substring search across verified databanks, live serving size adjustment in grams ($g$), dynamic calorie/macro meters, and meal slot allocation (Breakfast, Lunch, Dinner, Snacks).
+5. **Interactive Hydration Tracker**: Fluid intake monitoring with animated circular wave gauge, interactive goal adjustments, quick-add volumes (ml), and intake history ledger.
+6. **Interactive Progress Analytics**: Responsive Chart.js client-side visualizations for daily/weekly macronutrients, bodyweight trajectory tracking with weigh-in log, and hydration consistency.
+7. **AI Nutrition Assistant Bot**: Conversational AI bot offering interactive quick questions and comprehensive answers on protein requirements, Indian high-protein meals, workout nutrition timing, fat loss plateaus, and calorie deficits.
 
 ---
 
 ## 3. Technology Stack
-- **Frontend**: HTML5, Vanilla CSS3 (Custom Design System, Glassmorphic Navy Theme), Vanilla JavaScript (ES6+), Fetch API.
+- **Frontend**: HTML5, Vanilla CSS3 (Custom Design System, Glassmorphic Navy Theme), Vanilla JavaScript (ES6+), Chart.js, Fetch API.
 - **Primary Backend**: Node.js, Express.js, JWT, bcryptjs, mysql2/promise, express-validator, dotenv.
 - **Database**: MySQL 8.0+, 3NF Relational Schema, Foreign Keys, Indexes.
-- **AI Microservice**: Python, FastAPI, Scikit-learn, TensorFlow/Keras, Pandas, NumPy, OpenCV, Matplotlib.
-- **Visualization**: Python Matplotlib (no client-side JavaScript chart libraries used).
+- **AI Microservice**: Python, FastAPI, Scikit-learn, TensorFlow/Keras, Pandas, NumPy.
+- **Visualization**: Interactive Client-side Chart.js Engine.
 
 ---
 

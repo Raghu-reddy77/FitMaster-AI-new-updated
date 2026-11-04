@@ -10,7 +10,6 @@ const waterRoutes = require('./water.routes');
 const progressRoutes = require('./progress.routes');
 const aiRoutes = require('./ai.routes');
 const analyticsRoutes = require('./analytics.routes');
-const mealPlanRoutes = require('./meal-plan.routes');
 
 // Health Check Endpoint
 router.get('/health', (req, res) => {
@@ -27,7 +26,6 @@ router.use('/users', userRoutes);
 router.use('/nutrition', nutritionRoutes);
 router.use('/foods', foodRoutes);
 router.use('/meals', mealRoutes);
-router.use('/meal-plans', mealPlanRoutes);
 router.use('/water', waterRoutes);
 router.use('/progress', progressRoutes);
 router.use('/ai', aiRoutes);

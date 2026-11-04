@@ -1,3 +1,4 @@
+
 /**
  * FitMaster AI – HTTP Server Initialization
  */
@@ -8,7 +9,7 @@ require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = require('./app');
-const { testConnection } = require('./config/database');
+const database = require('./config/database');
 
 const PORT = Number(process.env.PORT) || 5000;
 
@@ -17,32 +18,35 @@ async function startServer() {
   console.log('       FitMaster AI – Backend Server');
   console.log('==============================================');
 
-  // Verify database connection
   try {
     console.log('[System]: Checking database connection...');
-    const isDbConnected = await testConnection();
-
-    if (!isDbConnected) {
-      console.warn('[Warning]: Database connection was unsuccessful.');
-    } else {
-      console.log('[Database]: Connection successful.');
-    }
-  } catch (err) {
-    console.error('[Database Error]:', err.message);
+    await database.testConnection();
+    console.log(`[Database]: Active driver - ${database.activeDriver}`);
+  } catch (error) {
+    console.error('[Database Error]:', error.message);
   }
 
-  // Render requires the server to listen on 0.0.0.0
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log(`[Server]: Running on port ${PORT}`);
     console.log('==============================================');
   });
 
-  // Graceful shutdown
   const shutdown = (signal) => {
     console.log(`[Server]: Received ${signal}. Shutting down...`);
 
-    server.close(() => {
-      console.log('[Server]: HTTP server closed.');
+    server.close(async () => {
+      try {
+        const activePool = database.pool;
+
+        if (typeof activePool.end === 'function') {
+          await activePool.end();
+        }
+
+        console.log('[Server]: Shutdown complete.');
+      } catch (error) {
+        console.error('[Shutdown Error]:', error.message);
+      }
+
       process.exit(0);
     });
   };

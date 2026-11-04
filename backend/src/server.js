@@ -1,49 +1,48 @@
 /**
  * FitMaster AI – HTTP Server Initialization
- * Boots Express REST API, verifies database connection, and configures graceful shutdown.
  */
 
 const path = require('path');
+
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env') });
 require('dotenv').config({ path: path.resolve(__dirname, '../.env') });
 
 const app = require('./app');
-const { testConnection, pool } = require('./config/database');
+const { testConnection } = require('./config/database');
 
-const PORT = parseInt(process.env.PORT, 10) || 5000;
+const PORT = Number(process.env.PORT) || 5000;
 
 async function startServer() {
-  console.log('====================================================');
-  console.log('   FitMaster AI – Intelligent Nutrition Tracker   ');
-  console.log('   Academic Full-Stack Node.js & Express Gateway   ');
-  console.log('====================================================');
+  console.log('==============================================');
+  console.log('       FitMaster AI – Backend Server');
+  console.log('==============================================');
 
-  // Verify database connectivity
-  console.log('[System]: Verifying MySQL database connectivity...');
-  const isDbConnected = await testConnection();
+  // Verify database connection
+  try {
+    console.log('[System]: Checking database connection...');
+    const isDbConnected = await testConnection();
 
-  if (!isDbConnected) {
-    console.warn('[System Warning]: MySQL database is not connected or requires password configuration.');
-    console.warn('[System Warning]: API will start, but database-dependent operations will wait for live DB.');
+    if (!isDbConnected) {
+      console.warn('[Warning]: Database connection was unsuccessful.');
+    } else {
+      console.log('[Database]: Connection successful.');
+    }
+  } catch (err) {
+    console.error('[Database Error]:', err.message);
   }
 
-  const server = app.listen(PORT, () => {
-    console.log(`[Server]: Node.js Express server is running on http://localhost:${PORT}`);
-    console.log(`[Health]: Endpoint available at http://localhost:${PORT}/api/health`);
-    console.log(`[Frontend]: UI hosted at http://localhost:${PORT}/`);
-    console.log('====================================================');
+  // Render requires the server to listen on 0.0.0.0
+  const server = app.listen(PORT, '0.0.0.0', () => {
+    console.log(`[Server]: Running on port ${PORT}`);
+    console.log('==============================================');
   });
 
   // Graceful shutdown
-  const shutdown = async (signal) => {
-    console.log(`\n[Server]: Received ${signal}. Gracefully closing HTTP server and MySQL pools...`);
-    server.close(async () => {
-      try {
-        await pool.end();
-        console.log('[Server]: MySQL connection pools closed. Clean exit.');
-      } catch (err) {
-        console.error('[Server Error]: Error closing MySQL pool:', err.message);
-      }
+  const shutdown = (signal) => {
+    console.log(`[Server]: Received ${signal}. Shutting down...`);
+
+    server.close(() => {
+      console.log('[Server]: HTTP server closed.');
       process.exit(0);
     });
   };

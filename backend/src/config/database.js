@@ -36,7 +36,8 @@ let mysqlPool = null;
 let sqliteDb = null;
 
 // Initialize SQLite fallback database file
-const SQLITE_FILE = path.resolve(__dirname, '../../../database/fitmaster.sqlite');
+const SQLITE_FILE = process.env.SQLITE_FILE ||
+  path.resolve(__dirname, '../../../database/fitmaster.sqlite');
 fs.mkdirSync(path.dirname(SQLITE_FILE), { recursive: true });
 
 function initSqlite() {
@@ -449,6 +450,12 @@ async function testConnection() {
     console.log(`  Host / Port    : ${dbConfig.host}:${dbConfig.port}`);
     return true;
   } catch (error) {
+    console.error('[MySQL Detailed Error]:', {
+  code: error.code,
+  message: error.message,
+  sqlState: error.sqlState,
+  errno: error.errno
+});
     // Graceful fallback to SQLite
     activeDriver = 'sqlite';
     initSqlite();

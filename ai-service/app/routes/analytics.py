@@ -10,10 +10,6 @@ from ..analytics.chart_generator import (
     generate_weight_chart,
     generate_model_evaluation_charts
 )
-import sys
-import os
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../..")))
-from cv_research.cv_module import AcademicComputerVisionExperiments
 
 router = APIRouter(prefix="/analytics", tags=["Matplotlib Analytics"])
 
@@ -67,13 +63,3 @@ async def get_model_evaluation():
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Model evaluation visualization failed: {str(e)}")
-
-@router.get("/cv-experiments")
-async def run_cv_experiments():
-    """
-    Execute isolated OpenCV image processing experiments (Bicubic scaling, Bilateral denoising, Canny, Otsu).
-    """
-    try:
-        return AcademicComputerVisionExperiments.run_all_cv_benchmarks()
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"CV experiment execution failed: {str(e)}")

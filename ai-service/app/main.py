@@ -1,7 +1,7 @@
 """
 FitMaster AI – Python AI & Analytics Microservice
 FastAPI entry point providing endpoints for nutrition gap prediction,
-recommendations ranking, server-side Matplotlib chart generation, and OpenCV CV research.
+recommendations ranking, and server-side Matplotlib chart generation.
 """
 
 import os
@@ -33,8 +33,6 @@ async def health_check():
         "runtime": "FastAPI + Uvicorn",
         "ai_frameworks": {
             "scikit_learn": "enabled",
-            "tensorflow": "enabled",
-            "opencv": "enabled",
             "matplotlib": "enabled",
             "pandas": "enabled"
         }

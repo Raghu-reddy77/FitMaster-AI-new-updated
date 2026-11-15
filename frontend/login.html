@@ -47,11 +47,7 @@
           Sign In
         </button>
 
-        <div style="margin-top: 14px; text-align: center;">
-          <button type="button" id="demo-fill-btn" class="btn btn-secondary btn-sm" style="font-size: 11px;">
-            Quick Fill Demo User (demo@fitmaster.ai)
-          </button>
-        </div>
+
       </form>
 
       <div class="auth-footer">
@@ -77,12 +73,5 @@
 
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
-  <script>
-    document.getElementById('demo-fill-btn')?.addEventListener('click', () => {
-      document.getElementById('login-email').value = 'demo@fitmaster.ai';
-      document.getElementById('login-password').value = 'Password@123';
-      showToast('Demo Credentials Filled', 'Click "Sign In" to access the dashboard.', 'info');
-    });
-  </script>
 </body>
 </html>

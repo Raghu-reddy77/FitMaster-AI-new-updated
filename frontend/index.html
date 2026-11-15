@@ -188,9 +188,7 @@
 
       <div class="hero-actions">
         <a href="login.html" class="btn btn-primary btn-lg">Launch FitMaster AI</a>
-        <button id="quick-demo-btn" class="btn btn-secondary btn-lg" onclick="loginDemoUser()">
-          ⚡ Quick Demo Login
-        </button>
+        <a href="register.html" class="btn btn-secondary btn-lg">Create Account</a>
       </div>
 
       <div style="display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
@@ -262,7 +260,7 @@
             Ready to explore the live system?
           </h2>
           <p style="color: var(--text-muted); font-size: 14px;">
-            Sign in with demo credentials (<code style="color: var(--primary);">demo@fitmaster.ai</code> / <code style="color: var(--primary);">Password@123</code>) or create an account.
+            Sign in to your account or create a free account to get started.
           </p>
         </div>
         <div style="display: flex; gap: 12px;">
@@ -280,36 +278,5 @@
 
   <script src="js/api.js"></script>
   <script src="js/auth.js"></script>
-  <script>
-    // Quick Demo Login Handler
-    async function loginDemoUser() {
-      const btn = document.getElementById('quick-demo-btn');
-      btn.disabled = true;
-      btn.textContent = 'Authenticating...';
-
-      try {
-        const res = await api.post('/auth/login', {
-          email: 'demo@fitmaster.ai',
-          password: 'Password@123'
-        });
-
-        localStorage.setItem('fitmaster_token', res.data.token);
-        localStorage.setItem('fitmaster_user', JSON.stringify(res.data.user));
-        showToast('Login Successful', 'Welcome to FitMaster AI!');
-        setTimeout(() => {
-          window.location.href = 'dashboard.html';
-        }, 600);
-      } catch (err) {
-        showToast('Login Failed', err.message, 'error');
-        btn.disabled = false;
-        btn.textContent = '⚡ Quick Demo Login';
-      }
-    }
-
-    // Auto redirect if already authenticated
-    if (localStorage.getItem('fitmaster_token')) {
-      window.location.href = 'dashboard.html';
-    }
-  </script>
 </body>
 </html>

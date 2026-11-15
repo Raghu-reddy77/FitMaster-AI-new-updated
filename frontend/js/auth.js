@@ -26,13 +26,23 @@ function logout() {
 // Route Guard Check
 document.addEventListener('DOMContentLoaded', () => {
   const path = window.location.pathname;
-  const isAuthPage = path.includes('login.html') || path.includes('register.html') || path === '/' || path.endsWith('/frontend/');
+
+  // Public pages: login, register, and root (which now serves login)
+  const isAuthPage = path.includes('login.html') ||
+                     path.includes('register.html') ||
+                     path === '/' ||
+                     path === '/index.html' ||
+                     path.endsWith('/frontend/') ||
+                     path.endsWith('/frontend/login.html') ||
+                     path.endsWith('/frontend/register.html');
 
   if (isAuthenticated()) {
-    if (isAuthPage && (path.includes('login.html') || path.includes('register.html'))) {
+    // Already logged in — redirect away from auth pages to dashboard
+    if (path.includes('login.html') || path.includes('register.html') || path === '/') {
       window.location.href = 'dashboard.html';
     }
   } else {
+    // Not logged in — block all app pages, redirect to login
     if (!isAuthPage) {
       window.location.href = 'login.html';
     }

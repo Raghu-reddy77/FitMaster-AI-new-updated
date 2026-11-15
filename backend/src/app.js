@@ -22,8 +22,21 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve frontend static assets (HTML, CSS, JS, Images, Icons)
+// Frontend path
 const frontendPath = path.resolve(__dirname, '../../frontend');
+
+// Root URL — serve login page BEFORE express.static so it takes priority over index.html.
+// The client-side auth guard (auth.js) will redirect to dashboard.html if already logged in.
+app.get('/', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'login.html'));
+});
+
+// /index.html also serves login (landing page no longer used as app entry point)
+app.get('/index.html', (req, res) => {
+  res.sendFile(path.join(frontendPath, 'login.html'));
+});
+
+// Serve remaining frontend static assets (CSS, JS, images, other HTML pages)
 app.use(express.static(frontendPath));
 
 // API Route Gateway
@@ -37,12 +50,8 @@ app.all('/api/*', (req, res) => {
   });
 });
 
-// Serve frontend index.html for root path
-app.get('/', (req, res) => {
-  res.sendFile(path.join(frontendPath, 'index.html'));
-});
-
 // Centralized Error Handling Middleware
 app.use(errorHandler);
 
 module.exports = app;
+

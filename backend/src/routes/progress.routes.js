@@ -10,5 +10,6 @@ router.get('/weekly', progressController.getWeekly);
 router.get('/monthly', progressController.getMonthly);
 router.get('/weight', progressController.getWeight);
 router.post('/weight', progressController.logWeight);
+router.delete('/weight/:id', progressController.deleteWeight);
 
 module.exports = router;

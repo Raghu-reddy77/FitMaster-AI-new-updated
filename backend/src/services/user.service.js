@@ -95,6 +95,21 @@ async function updateUserProfile(userId, profileData) {
     );
 
     if (existingGoal.length > 0) {
+      // Snapshot old goals before overwriting (for historical tracking)
+      const [oldGoal] = await connection.query(
+        'SELECT daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee FROM nutrition_goals WHERE user_id = ?',
+        [userId]
+      );
+      if (oldGoal.length > 0) {
+        const today = new Date();
+        const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+        await connection.query(
+          `INSERT INTO nutrition_goals_history (user_id, daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee, effective_from)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          [userId, oldGoal[0].daily_calories, oldGoal[0].protein_g, oldGoal[0].carbs_g, oldGoal[0].fat_g,
+           oldGoal[0].water_ml, oldGoal[0].bmi, oldGoal[0].bmr, oldGoal[0].tdee, todayStr]
+        );
+      }
       await connection.query(
         `UPDATE nutrition_goals 
          SET daily_calories = ?, protein_g = ?, carbs_g = ?, fat_g = ?, water_ml = ?, bmi = ?, bmr = ?, tdee = ? 

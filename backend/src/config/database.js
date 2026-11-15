@@ -195,6 +195,22 @@ function initSqlite() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     );
+
+    CREATE TABLE IF NOT EXISTS nutrition_goals_history (
+      history_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      daily_calories REAL NOT NULL,
+      protein_g REAL NOT NULL,
+      carbs_g REAL NOT NULL,
+      fat_g REAL NOT NULL,
+      water_ml REAL NOT NULL,
+      bmi REAL,
+      bmr REAL,
+      tdee REAL,
+      effective_from TEXT NOT NULL,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
   `);
 
   // Seed verified foods if empty
@@ -336,6 +352,9 @@ function adaptSqlForSqlite(sql) {
   s = s.replace(/DATE_SUB\(\s*date\('now'\)\s*,\s*INTERVAL\s+(\d+|\?)\s+DAY\s*\)/gi, "date('now', '-' || $1 || ' days')");
   // Replace ON DUPLICATE KEY UPDATE weight_kg = VALUES(weight_kg), notes = VALUES(notes)
   s = s.replace(/ON\s+DUPLICATE\s+KEY\s+UPDATE\s+weight_kg\s*=\s*VALUES\s*\(\s*weight_kg\s*\)(?:,\s*notes\s*=\s*VALUES\s*\(\s*notes\s*\))?/gi, 'ON CONFLICT(user_id, recorded_date) DO UPDATE SET weight_kg = excluded.weight_kg, notes = excluded.notes');
+  // Replace MySQL FIELD() with SQLite CASE expression
+  s = s.replace(/ORDER BY FIELD\(meal_type,\s*'breakfast',\s*'lunch',\s*'dinner',\s*'snacks'\)/gi,
+    "ORDER BY CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snacks' THEN 4 ELSE 5 END");
   return s;
 }
 

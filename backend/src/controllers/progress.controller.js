@@ -55,10 +55,22 @@ async function getWeight(req, res, next) {
   }
 }
 
+async function deleteWeight(req, res, next) {
+  try {
+    const userId = req.user.userId;
+    const weightId = parseInt(req.params.id, 10);
+    const result = await progressService.deleteWeight(userId, weightId);
+    return sendSuccess(res, 200, 'Weight entry deleted successfully.', result);
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getDaily,
   getWeekly,
   getMonthly,
   logWeight,
-  getWeight
+  getWeight,
+  deleteWeight
 };

@@ -257,3 +257,24 @@ CREATE TABLE IF NOT EXISTS ai_recommendations (
         ON DELETE CASCADE
         ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+-- Table 12: nutrition_goals_history (tracks historical goal snapshots per profile update)
+CREATE TABLE IF NOT EXISTS nutrition_goals_history (
+    history_id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NOT NULL,
+    daily_calories DECIMAL(8,2) NOT NULL,
+    protein_g DECIMAL(8,2) NOT NULL,
+    carbs_g DECIMAL(8,2) NOT NULL,
+    fat_g DECIMAL(8,2) NOT NULL,
+    water_ml DECIMAL(8,2) NOT NULL,
+    bmi DECIMAL(5,2),
+    bmr DECIMAL(8,2),
+    tdee DECIMAL(8,2),
+    effective_from DATE NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_goals_history_user (user_id),
+    CONSTRAINT fk_goals_history_user
+        FOREIGN KEY (user_id) REFERENCES users(user_id)
+        ON DELETE CASCADE
+        ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

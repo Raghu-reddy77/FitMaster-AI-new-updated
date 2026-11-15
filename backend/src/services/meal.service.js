@@ -19,7 +19,7 @@ async function getMealsByDate(userId, date) {
             total_protein, total_carbs, total_fat, total_fibre, created_at 
      FROM meals 
      WHERE user_id = ? AND meal_date = ? 
-     ORDER BY FIELD(meal_type, 'breakfast', 'lunch', 'dinner', 'snacks')`,
+     ORDER BY CASE meal_type WHEN 'breakfast' THEN 1 WHEN 'lunch' THEN 2 WHEN 'dinner' THEN 3 WHEN 'snacks' THEN 4 ELSE 5 END`,
     [userId, targetDate]
   );
 

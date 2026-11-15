@@ -1,14 +1,21 @@
 /**
  * FitMaster AI – Interactive Hydration Tracker Client Script
  * Manages water intake logging, dynamic circular wave gauge, interactive goal adjustments,
- * and date-based ledger with localStorage & backend API synchronization.
+ * and date-based ledger with backend API as primary store (localStorage as offline cache).
  */
 
-let waterDate = new Date().toISOString().split('T')[0];
+// Use local date to prevent UTC timezone shift (e.g. IST is UTC+5:30)
+function getLocalDateStr(d) {
+  const dt = d || new Date();
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+let waterDate = getLocalDateStr();
 let targetWaterMl = 2500;
 
 document.addEventListener('DOMContentLoaded', async () => {
-  loadTargetFromStorage();
+  // Load water target from backend first; localStorage as quick cache
+  await loadTargetFromProfile();
 
   const dateInput = document.getElementById('water-date-picker');
   if (dateInput) {
@@ -41,8 +48,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     goalSlider.addEventListener('input', (e) => {
       targetWaterMl = parseInt(e.target.value, 10);
       if (goalValDisplay) goalValDisplay.textContent = `${targetWaterMl} ml`;
-
-      // Save to profile
       saveTargetToStorage(targetWaterMl);
       loadWaterData();
     });
@@ -65,25 +70,34 @@ document.addEventListener('DOMContentLoaded', async () => {
   await loadWaterData();
 });
 
-function loadTargetFromStorage() {
+async function loadTargetFromProfile() {
+  // Quick cache read first
   const savedProfile = localStorage.getItem('fitmaster_profile');
   if (savedProfile) {
     try {
       const p = JSON.parse(savedProfile);
-      if (p.goals?.water_ml) {
-        targetWaterMl = p.goals.water_ml;
-      }
-    } catch (e) {
-      console.warn('Water target parse:', e);
+      if (p.goals?.water_ml) targetWaterMl = p.goals.water_ml;
+    } catch (e) {}
+  }
+  // Authoritative source: backend
+  try {
+    const res = await api.get('/users/profile');
+    if (res?.data?.goal?.water_ml) {
+      targetWaterMl = res.data.goal.water_ml;
+      // Update cache
+      const cache = JSON.parse(localStorage.getItem('fitmaster_profile') || '{}');
+      if (!cache.goals) cache.goals = {};
+      cache.goals.water_ml = targetWaterMl;
+      localStorage.setItem('fitmaster_profile', JSON.stringify(cache));
     }
+  } catch (e) {
+    console.warn('Could not fetch water target from backend:', e);
   }
 }
 
 function saveTargetToStorage(val) {
   let p = {};
-  try {
-    p = JSON.parse(localStorage.getItem('fitmaster_profile') || '{}');
-  } catch {}
+  try { p = JSON.parse(localStorage.getItem('fitmaster_profile') || '{}'); } catch {}
   if (!p.goals) p.goals = {};
   p.goals.water_ml = val;
   localStorage.setItem('fitmaster_profile', JSON.stringify(p));
@@ -91,22 +105,20 @@ function saveTargetToStorage(val) {
 
 function animateButton(btn) {
   btn.style.transform = 'scale(0.92)';
-  setTimeout(() => {
-    btn.style.transform = '';
-  }, 180);
+  setTimeout(() => { btn.style.transform = ''; }, 180);
 }
 
 function changeWaterDate(daysOffset) {
-  const d = new Date(waterDate);
+  const d = new Date(waterDate + 'T12:00:00');
   d.setDate(d.getDate() + daysOffset);
-  waterDate = d.toISOString().split('T')[0];
+  waterDate = getLocalDateStr(d);
   const dateInput = document.getElementById('water-date-picker');
   if (dateInput) dateInput.value = waterDate;
   loadWaterData();
 }
 
 /**
- * Load hydration data for selected date
+ * Load hydration data for selected date — backend is primary
  */
 async function loadWaterData() {
   let waterData = null;
@@ -115,10 +127,11 @@ async function loadWaterData() {
     const res = await api.get(`/water?date=${waterDate}`);
     if (res?.data) {
       waterData = res.data;
+      // Backend returns the authoritative target from nutrition_goals
       if (waterData.target_ml) targetWaterMl = waterData.target_ml;
     }
   } catch {
-    // LocalStorage fallback
+    // LocalStorage fallback (offline mode only)
     const consumed = Number(localStorage.getItem(`fitmaster_water_${waterDate}`) || 0);
     const logs = JSON.parse(localStorage.getItem(`fitmaster_water_history_${waterDate}`) || '[]');
     const percentage = targetWaterMl > 0 ? Math.round((consumed / targetWaterMl) * 100) : 0;
@@ -169,9 +182,7 @@ function renderWaterUI(data) {
 
   // Update Gauge
   const fillLevel = document.getElementById('water-fill-level');
-  if (fillLevel) {
-    fillLevel.style.height = `${boundedPercent}%`;
-  }
+  if (fillLevel) fillLevel.style.height = `${boundedPercent}%`;
 
   const percentVal = document.getElementById('water-percent-val');
   if (percentVal) percentVal.textContent = `${percentage}%`;
@@ -196,11 +207,12 @@ function renderWaterUI(data) {
   }
 
   container.innerHTML = '';
-  // Show most recent first
   const sortedLogs = [...logs].reverse();
 
   sortedLogs.forEach((log) => {
-    const timeStr = log.logged_at ? new Date(log.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'Logged';
+    const timeStr = log.logged_at
+      ? new Date(log.logged_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      : 'Logged';
     const row = document.createElement('div');
     row.className = 'intake-row';
     row.innerHTML = `
@@ -218,59 +230,54 @@ function renderWaterUI(data) {
 }
 
 /**
- * Log fluid intake
+ * Log fluid intake — backend is primary, localStorage is offline cache
  */
 async function logWaterAmount(amountMl) {
-  // Offline / local storage record
-  const current = Number(localStorage.getItem(`fitmaster_water_${waterDate}`) || 0);
-  const updated = current + amountMl;
-  localStorage.setItem(`fitmaster_water_${waterDate}`, updated);
-
-  const history = JSON.parse(localStorage.getItem(`fitmaster_water_history_${waterDate}`) || '[]');
-  const newLog = {
-    water_id: Date.now(),
-    amount_ml: amountMl,
-    logged_at: new Date().toISOString()
-  };
-  history.push(newLog);
-  localStorage.setItem(`fitmaster_water_history_${waterDate}`, JSON.stringify(history));
-
   try {
+    // API-first: saves to DB, returns fresh totals
     await api.post('/water', {
       amount_ml: amountMl,
       date: waterDate
     });
+    showToast('Hydration Logged', `+${amountMl} ml of water recorded!`, 'success');
   } catch (e) {
-    console.warn('API water log:', e);
+    console.warn('API water log failed, saving locally:', e);
+    // Offline fallback
+    const current = Number(localStorage.getItem(`fitmaster_water_${waterDate}`) || 0);
+    localStorage.setItem(`fitmaster_water_${waterDate}`, current + amountMl);
+    const history = JSON.parse(localStorage.getItem(`fitmaster_water_history_${waterDate}`) || '[]');
+    history.push({ water_id: Date.now(), amount_ml: amountMl, logged_at: new Date().toISOString() });
+    localStorage.setItem(`fitmaster_water_history_${waterDate}`, JSON.stringify(history));
+    showToast('Hydration Logged (Offline)', `+${amountMl} ml saved locally.`, 'info');
   }
 
-  showToast('Hydration Logged', `+${amountMl} ml of water recorded!`, 'success');
   await loadWaterData();
 }
 
 /**
- * Delete hydration log
+ * Delete hydration log — backend is primary
  */
 async function deleteWaterEntry(waterId) {
-  // Update local storage
-  let history = JSON.parse(localStorage.getItem(`fitmaster_water_history_${waterDate}`) || '[]');
-  const itemToDelete = history.find((h) => h.water_id == waterId);
-  const amountToSubtract = itemToDelete ? itemToDelete.amount_ml : 0;
-
-  history = history.filter((h) => h.water_id != waterId);
-  localStorage.setItem(`fitmaster_water_history_${waterDate}`, JSON.stringify(history));
-
-  const current = Number(localStorage.getItem(`fitmaster_water_${waterDate}`) || 0);
-  const updated = Math.max(0, current - amountToSubtract);
-  localStorage.setItem(`fitmaster_water_${waterDate}`, updated);
-
   try {
     await api.delete(`/water/${waterId}`);
+    showToast('Entry Removed', 'Hydration entry deleted.', 'info');
   } catch (e) {
-    console.warn('API delete water:', e);
+    // If not a real backend ID (offline mode), remove from localStorage
+    let history = JSON.parse(localStorage.getItem(`fitmaster_water_history_${waterDate}`) || '[]');
+    const item = history.find((h) => h.water_id == waterId);
+    if (item) {
+      history = history.filter((h) => h.water_id != waterId);
+      localStorage.setItem(`fitmaster_water_history_${waterDate}`, JSON.stringify(history));
+      const current = Number(localStorage.getItem(`fitmaster_water_${waterDate}`) || 0);
+      localStorage.setItem(`fitmaster_water_${waterDate}`, Math.max(0, current - item.amount_ml));
+      showToast('Entry Removed', 'Hydration entry deleted (offline).', 'info');
+    } else {
+      console.warn('API water delete failed:', e);
+      showToast('Error', 'Could not delete entry.', 'error');
+      return;
+    }
   }
 
-  showToast('Entry Removed', 'Hydration entry deleted.', 'info');
   await loadWaterData();
 }
 

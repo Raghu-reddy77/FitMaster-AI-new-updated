@@ -204,10 +204,31 @@ async function getWeightHistory(userId, limit = 30) {
   return history;
 }
 
+/**
+ * Delete a weight history entry
+ * @param {number} userId
+ * @param {number} weightId
+ */
+async function deleteWeight(userId, weightId) {
+  const result = await db.query(
+    'DELETE FROM weight_history WHERE weight_id = ? AND user_id = ?',
+    [weightId, userId]
+  );
+
+  if (result.affectedRows === 0) {
+    const error = new Error('Weight entry not found or unauthorized.');
+    error.statusCode = 404;
+    throw error;
+  }
+
+  return { message: 'Weight entry deleted successfully.' };
+}
+
 module.exports = {
   getDailyProgress,
   getWeeklyProgress,
   getMonthlyProgress,
   logWeight,
-  getWeightHistory
+  getWeightHistory,
+  deleteWeight
 };

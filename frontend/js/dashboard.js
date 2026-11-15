@@ -3,7 +3,13 @@
  * Synchronizes daily energy, hydration status, macronutrients, and today's meals.
  */
 
-let selectedDate = new Date().toISOString().split('T')[0];
+// Use local date to prevent UTC timezone shift (e.g. IST is UTC+5:30)
+function getLocalDateStr(d) {
+  const dt = d || new Date();
+  return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
+}
+
+let selectedDate = getLocalDateStr();
 
 document.addEventListener('DOMContentLoaded', () => {
   const datePicker = document.getElementById('dash-date-picker');
@@ -34,11 +40,12 @@ async function loadDashboardData() {
       document.getElementById('dash-user-name').textContent = user.name;
     }
 
-    // Load user targets
+    // Load user targets — backend is authoritative; localStorage is a quick cache
     let targetCalories = 2000;
     let targetMacros = { protein: 140, carbs: 220, fat: 60 };
     let targetWater = 2500;
 
+    // Quick cache read first
     const savedProfile = localStorage.getItem('fitmaster_profile');
     if (savedProfile) {
       try {
@@ -53,13 +60,36 @@ async function loadDashboardData() {
       }
     }
 
-    // Try backend API for daily progress
+    // Fetch authoritative targets from backend
+    try {
+      const profileRes = await api.get('/users/profile');
+      if (profileRes?.data?.goal) {
+        const g = profileRes.data.goal;
+        if (g.daily_calories) targetCalories = g.daily_calories;
+        if (g.protein_g) targetMacros.protein = g.protein_g;
+        if (g.carbs_g) targetMacros.carbs = g.carbs_g;
+        if (g.fat_g) targetMacros.fat = g.fat_g;
+        if (g.water_ml) targetWater = g.water_ml;
+        // Also get user name from profile endpoint
+        if (profileRes.data.user?.name && document.getElementById('dash-user-name')) {
+          document.getElementById('dash-user-name').textContent = profileRes.data.user.name;
+        }
+        // Update cache
+        const cache = JSON.parse(localStorage.getItem('fitmaster_profile') || '{}');
+        cache.goals = { daily_calories: targetCalories, protein_g: targetMacros.protein, carbs_g: targetMacros.carbs, fat_g: targetMacros.fat, water_ml: targetWater };
+        localStorage.setItem('fitmaster_profile', JSON.stringify(cache));
+      }
+    } catch (e) {
+      console.warn('Could not load profile from backend:', e);
+    }
+
+    // Try backend API for daily progress (backend computes totals from DB)
     let dailyData = null;
     try {
       const progressRes = await api.get(`/progress/daily?date=${selectedDate}`);
       dailyData = progressRes?.data;
     } catch {
-      // Fallback from localStorage
+      // Fallback from localStorage (offline mode)
       dailyData = getLocalDailyData(selectedDate, targetCalories, targetWater, targetMacros);
     }
 

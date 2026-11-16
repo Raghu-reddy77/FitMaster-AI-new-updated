@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Food & Nutrition Tracker – FitMaster AI</title>
+  <title>Food &amp; Nutrition Tracker – FitMaster AI</title>
   <meta name="description" content="Search verified nutrition database, calculate proportional calories and macros dynamically, and log daily meals.">
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/tracker.css">
@@ -90,9 +90,9 @@
       <!-- Header Controls -->
       <div style="display: flex; justify-content: space-between; align-items: flex-end; margin-bottom: 24px; flex-wrap: wrap; gap: 16px;">
         <div>
-          <h1 style="font-size: 28px; margin-bottom: 6px;">Food & Nutrition Tracker</h1>
+          <h1 style="font-size: 28px; margin-bottom: 6px;">Food &amp; Nutrition Tracker</h1>
           <p style="color: var(--text-muted); font-size: 14px;">
-            Log your daily intake with dynamic per-gram nutritional calculation. Manual database search only.
+            Log meals with dynamic per-gram nutritional calculation. Use suggestions, search, or add custom foods.
           </p>
         </div>
 
@@ -204,7 +204,7 @@
             <div class="meal-title-group">
               <div class="meal-icon-box">🍎</div>
               <div>
-                <h3>Snacks & Beverages</h3>
+                <h3>Snacks &amp; Beverages</h3>
                 <div class="meal-totals-pill" id="snacks-totals-text">0 kcal • 0g P • 0g C • 0g F</div>
               </div>
             </div>
@@ -220,48 +220,148 @@
     </main>
   </div>
 
-  <!-- Food Search & Gram Sizing Modal -->
+  <!-- Enhanced Food Modal with Tabs -->
   <div class="modal-backdrop" id="food-search-modal">
-    <div class="glass-panel modal-card">
+    <div class="glass-panel modal-card modal-card-wide">
+      <!-- Modal Header -->
       <div class="modal-header">
         <div>
           <h2 style="font-size: 20px;">Add Food to <span id="modal-meal-name" style="color: var(--primary-light);">Meal</span></h2>
-          <p style="color: var(--text-dim); font-size: 13px;">Search verified USDA & Indian Nutrient Databank records</p>
+          <p style="color: var(--text-dim); font-size: 13px;">Search database, pick suggestions, or create a custom food</p>
         </div>
         <button class="modal-close-btn" id="modal-close-btn" aria-label="Close Modal">&times;</button>
       </div>
 
-      <!-- Search Input -->
-      <div class="form-group" style="margin-bottom: 12px;">
-        <input type="text" id="food-search-input" class="form-control" placeholder="Search foods (e.g., Brown Rice, Paneer, Chicken, Dal)..." autocomplete="off">
+      <!-- Modal Tabs -->
+      <div class="modal-tabs" id="modal-tabs">
+        <button class="modal-tab active" data-tab="suggestions">💡 Suggestions</button>
+        <button class="modal-tab" data-tab="search">🔍 Search</button>
+        <button class="modal-tab" data-tab="custom">+ Custom Food</button>
+        <button class="modal-tab" data-tab="myfoods">📋 My Foods</button>
       </div>
 
-      <!-- Category Filter Chips -->
-      <div class="category-filter-chips" id="category-chips-bar">
-        <button class="category-chip active" data-cat="">All Categories</button>
-        <button class="category-chip" data-cat="Grains & Cereals">Grains & Cereals</button>
-        <button class="category-chip" data-cat="Legumes & Pulses">Legumes & Pulses</button>
-        <button class="category-chip" data-cat="Dairy & Alternatives">Dairy</button>
-        <button class="category-chip" data-cat="Poultry & Meat">Poultry & Meat</button>
-        <button class="category-chip" data-cat="Fish & Seafood">Fish & Seafood</button>
-        <button class="category-chip" data-cat="Vegetables">Vegetables</button>
-        <button class="category-chip" data-cat="Fruits">Fruits</button>
-        <button class="category-chip" data-cat="Nuts & Seeds">Nuts & Seeds</button>
-        <button class="category-chip" data-cat="Oils & Fats">Oils & Fats</button>
-      </div>
-
-      <!-- Food List -->
-      <div class="search-results-box" id="search-results-list">
-        <div style="text-align: center; padding: 30px; color: var(--text-dim);">
-          Loading food database...
+      <!-- TAB: Suggestions -->
+      <div class="tab-panel active" id="tab-suggestions">
+        <div class="suggestion-chips-container" id="suggestion-chips">
+          <div style="color: var(--text-dim); font-size: 13px; padding: 10px 0;">Loading suggestions...</div>
         </div>
       </div>
 
-      <!-- Dynamic Serving Sizer (Visible when food is selected) -->
+      <!-- TAB: Search -->
+      <div class="tab-panel" id="tab-search">
+        <!-- Search Input -->
+        <div class="form-group" style="margin-bottom: 12px;">
+          <input type="text" id="food-search-input" class="form-control" placeholder="Search foods (e.g., Brown Rice, Paneer, Chicken, Dal)..." autocomplete="off">
+        </div>
+
+        <!-- Category Filter Chips -->
+        <div class="category-filter-chips" id="category-chips-bar">
+          <button class="category-chip active" data-cat="">All Categories</button>
+          <button class="category-chip" data-cat="Grains &amp; Cereals">Grains &amp; Cereals</button>
+          <button class="category-chip" data-cat="Legumes &amp; Pulses">Legumes &amp; Pulses</button>
+          <button class="category-chip" data-cat="Dairy &amp; Alternatives">Dairy</button>
+          <button class="category-chip" data-cat="Poultry &amp; Meat">Poultry &amp; Meat</button>
+          <button class="category-chip" data-cat="Fish &amp; Seafood">Fish &amp; Seafood</button>
+          <button class="category-chip" data-cat="Vegetables">Vegetables</button>
+          <button class="category-chip" data-cat="Fruits">Fruits</button>
+          <button class="category-chip" data-cat="Nuts &amp; Seeds">Nuts &amp; Seeds</button>
+          <button class="category-chip" data-cat="Oils &amp; Fats">Oils &amp; Fats</button>
+        </div>
+
+        <!-- Food List -->
+        <div class="search-results-box" id="search-results-list">
+          <div style="text-align: center; padding: 30px; color: var(--text-dim);">
+            Loading food database...
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: Custom Food -->
+      <div class="tab-panel" id="tab-custom">
+        <div class="custom-food-form">
+          <div class="form-group">
+            <label class="form-label">Food Name *</label>
+            <input type="text" id="cf-name" class="form-control" placeholder="e.g., Idli, Protein Shake, Homemade Dal">
+          </div>
+
+          <div style="display: flex; gap: 12px;">
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Default Quantity</label>
+              <input type="number" id="cf-qty" class="form-control" value="100" min="1" step="1">
+            </div>
+            <div class="form-group" style="flex: 1;">
+              <label class="form-label">Unit</label>
+              <select id="cf-unit" class="form-control">
+                <option value="grams">grams (g)</option>
+                <option value="ml">millilitres (ml)</option>
+                <option value="servings">servings</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Ingredients Section -->
+          <div style="margin-bottom: 14px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+              <label class="form-label" style="margin: 0;">Ingredients (optional — for estimation)</label>
+              <button class="btn btn-secondary btn-sm" id="add-ingredient-btn" type="button">+ Add Ingredient</button>
+            </div>
+            <div id="ingredients-list"></div>
+          </div>
+
+          <!-- Nutrition Fields -->
+          <div style="display: flex; gap: 10px; align-items: center; margin-bottom: 10px;">
+            <span class="form-label" style="margin: 0; flex: none;">Nutrition per 100g:</span>
+            <button class="btn btn-secondary btn-sm" id="estimate-nutrition-btn" type="button">⚡ Estimate</button>
+          </div>
+          <div id="estimated-label" class="estimated-banner" style="display: none;">
+            ⚠️ Estimated values — please verify before saving
+          </div>
+          <div class="nutrition-fields-grid">
+            <div class="form-group">
+              <label class="form-label">Calories (kcal)</label>
+              <input type="number" id="cf-cal" class="form-control" placeholder="0" min="0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Protein (g)</label>
+              <input type="number" id="cf-prot" class="form-control" placeholder="0" min="0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Carbohydrates (g)</label>
+              <input type="number" id="cf-carbs" class="form-control" placeholder="0" min="0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fat (g)</label>
+              <input type="number" id="cf-fat" class="form-control" placeholder="0" min="0" step="0.1">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Fibre (g)</label>
+              <input type="number" id="cf-fibre" class="form-control" placeholder="0" min="0" step="0.1">
+            </div>
+          </div>
+
+          <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button class="btn btn-primary" id="save-custom-food-btn" type="button">💾 Save to My Foods</button>
+            <button class="btn btn-secondary" id="add-custom-once-btn" type="button">➕ Add to Meal (once)</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB: My Foods -->
+      <div class="tab-panel" id="tab-myfoods">
+        <div class="my-foods-toolbar" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+          <span style="color: var(--text-muted); font-size: 13px;" id="my-foods-count">Your custom foods</span>
+          <button class="btn btn-secondary btn-sm" id="refresh-my-foods-btn">↺ Refresh</button>
+        </div>
+        <div id="my-foods-list" class="search-results-box">
+          <div style="text-align: center; padding: 30px; color: var(--text-dim);">Loading your custom foods...</div>
+        </div>
+      </div>
+
+      <!-- Shared: Serving Calculator (shown when any food is selected) -->
       <div class="serving-calculator-card" id="serving-calculator" style="display: none;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
           <strong id="selected-food-title" style="color: #ffffff; font-size: 15px;">Selected Food</strong>
-          <span class="badge badge-cyan" id="selected-food-source">USDA</span>
+          <span class="badge badge-cyan" id="selected-food-source">DB</span>
         </div>
 
         <div style="display: flex; align-items: center; gap: 12px;">
@@ -282,21 +382,11 @@
 
         <!-- Dynamic Calculation Preview -->
         <div class="dynamic-calc-preview">
-          <div>
-            <strong>Calories:</strong> <span id="calc-calories">0</span> kcal
-          </div>
-          <div>
-            <strong>Protein:</strong> <span id="calc-protein">0</span>g
-          </div>
-          <div>
-            <strong>Carbs:</strong> <span id="calc-carbs">0</span>g
-          </div>
-          <div>
-            <strong>Fat:</strong> <span id="calc-fat">0</span>g
-          </div>
-          <div>
-            <strong>Fibre:</strong> <span id="calc-fibre">0</span>g
-          </div>
+          <div><strong>Calories:</strong> <span id="calc-calories">0</span> kcal</div>
+          <div><strong>Protein:</strong> <span id="calc-protein">0</span>g</div>
+          <div><strong>Carbs:</strong> <span id="calc-carbs">0</span>g</div>
+          <div><strong>Fat:</strong> <span id="calc-fat">0</span>g</div>
+          <div><strong>Fibre:</strong> <span id="calc-fibre">0</span>g</div>
         </div>
       </div>
 

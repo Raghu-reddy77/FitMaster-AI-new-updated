@@ -5,6 +5,7 @@
 
 const db = require('../config/database');
 const { getFoodById, scaleNutrition } = require('./food.service');
+const { getCustomFoodById } = require('./customFood.service');
 
 /**
  * Retrieve all logged meals and items for a specific user and date
@@ -37,17 +38,33 @@ async function getMealsByDate(userId, date) {
     };
   }
 
-  // Fetch items for all these meals
+  // Fetch items for all these meals — handle both regular foods and custom foods
   const mealIds = meals.map((m) => m.meal_id);
-  const items = await db.query(
-    `SELECT mi.meal_item_id, mi.meal_id, mi.food_id, mi.quantity_grams, 
+  const placeholders = mealIds.map(() => '?').join(',');
+
+  // Regular food items (food_id NOT NULL)
+  const regularItems = await db.query(
+    `SELECT mi.meal_item_id, mi.meal_id, mi.food_id, mi.custom_food_id, mi.quantity_grams,
             mi.calories, mi.protein, mi.carbs, mi.fat, mi.fibre,
             f.food_name, f.category, f.serving_size, f.source
      FROM meal_items mi
      JOIN foods f ON mi.food_id = f.food_id
-     WHERE mi.meal_id IN (${mealIds.map(() => '?').join(',')})`,
+     WHERE mi.meal_id IN (${placeholders}) AND mi.food_id IS NOT NULL`,
     mealIds
   );
+
+  // Custom food items (custom_food_id NOT NULL, food_id NULL)
+  const customItems = await db.query(
+    `SELECT mi.meal_item_id, mi.meal_id, mi.food_id, mi.custom_food_id, mi.quantity_grams,
+            mi.calories, mi.protein, mi.carbs, mi.fat, mi.fibre,
+            cf.food_name, 'Custom' AS category, cf.serving_size, 'Custom Food' AS source
+     FROM meal_items mi
+     JOIN custom_foods cf ON mi.custom_food_id = cf.custom_food_id
+     WHERE mi.meal_id IN (${placeholders}) AND mi.food_id IS NULL`,
+    mealIds
+  );
+
+  const items = [...regularItems, ...customItems];
 
   // Group items by meal
   const itemsByMealId = {};
@@ -117,14 +134,36 @@ async function logMeal(userId, mealData) {
 
     const computedItems = [];
     for (const itm of items) {
-      const food = await getFoodById(itm.food_id);
-      const scaled = scaleNutrition(food, parseFloat(itm.quantity_grams));
+      let scaled;
+
+      if (itm.custom_food_id) {
+        // Custom food — look up from custom_foods, ownership-verified
+        const customFood = await getCustomFoodById(userId, itm.custom_food_id);
+        const grams = parseFloat(itm.quantity_grams);
+        const mult = grams / 100;
+        scaled = {
+          food_id: null,
+          custom_food_id: customFood.custom_food_id,
+          food_name: customFood.food_name,
+          quantity_grams: grams,
+          calories: Number((customFood.calories_per_100g * mult).toFixed(2)),
+          protein:  Number((customFood.protein_per_100g  * mult).toFixed(2)),
+          carbs:    Number((customFood.carbs_per_100g    * mult).toFixed(2)),
+          fat:      Number((customFood.fat_per_100g      * mult).toFixed(2)),
+          fibre:    Number((customFood.fibre_per_100g    * mult).toFixed(2))
+        };
+      } else {
+        // Regular food from foods table
+        const food = await getFoodById(itm.food_id);
+        scaled = scaleNutrition(food, parseFloat(itm.quantity_grams));
+        scaled.custom_food_id = null;
+      }
 
       totalCalories += scaled.calories;
-      totalProtein += scaled.protein;
-      totalCarbs += scaled.carbs;
-      totalFat += scaled.fat;
-      totalFibre += scaled.fibre;
+      totalProtein  += scaled.protein;
+      totalCarbs    += scaled.carbs;
+      totalFat      += scaled.fat;
+      totalFibre    += scaled.fibre;
 
       computedItems.push(scaled);
     }
@@ -150,11 +189,12 @@ async function logMeal(userId, mealData) {
     // 3. Insert all meal items
     for (const scaled of computedItems) {
       await connection.query(
-        `INSERT INTO meal_items (meal_id, food_id, quantity_grams, calories, protein, carbs, fat, fibre)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO meal_items (meal_id, food_id, custom_food_id, quantity_grams, calories, protein, carbs, fat, fibre)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         [
           mealId,
-          scaled.food_id,
+          scaled.food_id || null,
+          scaled.custom_food_id || null,
           scaled.quantity_grams,
           scaled.calories,
           scaled.protein,

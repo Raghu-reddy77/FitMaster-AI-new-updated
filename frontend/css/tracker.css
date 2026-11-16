@@ -405,3 +405,166 @@
 .dynamic-calc-preview strong {
   color: var(--primary-light);
 }
+
+/* ============================================================
+   Modal Tabs (Food Tracker Enhanced Modal)
+   ============================================================ */
+
+.modal-card-wide {
+  width: 100%;
+  max-width: 700px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--bg-card-border);
+  padding-bottom: 0;
+  overflow-x: auto;
+}
+
+.modal-tab {
+  padding: 8px 16px;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all var(--transition-fast);
+  margin-bottom: -1px;
+}
+
+.modal-tab:hover {
+  color: var(--text-secondary);
+}
+
+.modal-tab.active {
+  color: var(--primary-light);
+  border-bottom-color: var(--primary);
+}
+
+/* ============================================================
+   Tab Panels
+   ============================================================ */
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel.active {
+  display: block;
+}
+
+/* ============================================================
+   Suggestion Chips (Meal-Specific)
+   ============================================================ */
+
+.suggestion-chips-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 4px 0 16px;
+  max-height: 320px;
+  overflow-y: auto;
+}
+
+.suggestion-chip {
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  min-width: 140px;
+  flex: 1 1 140px;
+  max-width: 220px;
+}
+
+.suggestion-chip:hover {
+  background: rgba(16, 185, 129, 0.1);
+  border-color: var(--primary);
+}
+
+.suggestion-chip-name {
+  font-weight: 600;
+  font-size: 13px;
+  color: #fff;
+  margin-bottom: 3px;
+}
+
+.suggestion-chip-macros {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+/* ============================================================
+   Custom Food Form
+   ============================================================ */
+
+.custom-food-form {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.ingredient-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.nutrition-fields-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+@media (max-width: 600px) {
+  .nutrition-fields-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+.estimated-banner {
+  padding: 8px 12px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: var(--radius-sm);
+  color: #fbbf24;
+  font-size: 12px;
+  margin-bottom: 12px;
+}
+
+/* ============================================================
+   My Foods List
+   ============================================================ */
+
+.my-food-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: var(--bg-surface);
+  border: 1px solid var(--bg-card-border);
+  border-radius: var(--radius-md);
+  margin-bottom: 8px;
+  gap: 12px;
+  transition: border-color var(--transition-fast);
+}
+
+.my-food-item:hover {
+  border-color: var(--primary);
+}
+
+.my-food-info {
+  flex: 1;
+  min-width: 0;
+}

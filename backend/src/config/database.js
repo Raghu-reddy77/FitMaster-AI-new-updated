@@ -116,7 +116,8 @@ function initSqlite() {
     CREATE TABLE IF NOT EXISTS meal_items (
       meal_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
       meal_id INTEGER NOT NULL,
-      food_id INTEGER NOT NULL,
+      food_id INTEGER,
+      custom_food_id INTEGER,
       quantity_grams REAL NOT NULL,
       calories REAL NOT NULL,
       protein REAL NOT NULL,
@@ -124,8 +125,7 @@ function initSqlite() {
       fat REAL NOT NULL,
       fibre REAL NOT NULL DEFAULT 0.0,
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY (meal_id) REFERENCES meals(meal_id) ON DELETE CASCADE,
-      FOREIGN KEY (food_id) REFERENCES foods(food_id)
+      FOREIGN KEY (meal_id) REFERENCES meals(meal_id) ON DELETE CASCADE
     );
 
     CREATE TABLE IF NOT EXISTS water_intake (
@@ -211,7 +211,66 @@ function initSqlite() {
       created_at TEXT DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
     );
+    CREATE TABLE IF NOT EXISTS custom_foods (
+      custom_food_id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER NOT NULL,
+      food_name TEXT NOT NULL,
+      calories_per_100g REAL NOT NULL DEFAULT 0,
+      protein_per_100g REAL NOT NULL DEFAULT 0,
+      carbs_per_100g REAL NOT NULL DEFAULT 0,
+      fat_per_100g REAL NOT NULL DEFAULT 0,
+      fibre_per_100g REAL NOT NULL DEFAULT 0,
+      serving_size TEXT DEFAULT '100g',
+      serving_weight_g REAL DEFAULT 100,
+      unit TEXT DEFAULT 'grams',
+      ingredients_json TEXT,
+      is_estimated INTEGER DEFAULT 0,
+      created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+    );
   `);
+
+  // Ensure custom_food_id column exists in meal_items + food_id is nullable (idempotent migration)
+  try {
+    sqliteDb.exec('ALTER TABLE meal_items ADD COLUMN custom_food_id INTEGER');
+  } catch (e) {
+    // Column already exists — ignore
+  }
+  // Ensure food_id is nullable (migration for existing DBs with NOT NULL constraint)
+  try {
+    const colInfo = sqliteDb.prepare("PRAGMA table_info(meal_items)").all();
+    const foodIdCol = colInfo.find(c => c.name === 'food_id');
+    if (foodIdCol && foodIdCol.notnull === 1) {
+      // Need to rebuild table to drop NOT NULL
+      const existing = sqliteDb.prepare('SELECT * FROM meal_items').all();
+      sqliteDb.exec('ALTER TABLE meal_items RENAME TO meal_items_old');
+      sqliteDb.exec(`
+        CREATE TABLE meal_items (
+          meal_item_id INTEGER PRIMARY KEY AUTOINCREMENT,
+          meal_id INTEGER NOT NULL,
+          food_id INTEGER,
+          custom_food_id INTEGER,
+          quantity_grams REAL NOT NULL,
+          calories REAL NOT NULL,
+          protein REAL NOT NULL,
+          carbs REAL NOT NULL,
+          fat REAL NOT NULL,
+          fibre REAL NOT NULL DEFAULT 0.0,
+          created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (meal_id) REFERENCES meals(meal_id) ON DELETE CASCADE
+        )
+      `);
+      const ins = sqliteDb.prepare('INSERT INTO meal_items (meal_item_id,meal_id,food_id,custom_food_id,quantity_grams,calories,protein,carbs,fat,fibre,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)');
+      for (const row of existing) {
+        ins.run(row.meal_item_id,row.meal_id,row.food_id||null,row.custom_food_id||null,row.quantity_grams,row.calories,row.protein,row.carbs,row.fat,row.fibre,row.created_at);
+      }
+      sqliteDb.exec('DROP TABLE meal_items_old');
+      console.log('[DB Migration]: meal_items rebuilt — food_id now nullable, custom_food_id added.');
+    }
+  } catch (e) {
+    console.warn('[DB Migration Warning]:', e.message);
+  }
 
   // Seed verified foods if empty
   const foodCount = sqliteDb.prepare('SELECT COUNT(*) as count FROM foods').get().count;

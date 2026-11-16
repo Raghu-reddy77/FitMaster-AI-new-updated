@@ -42,3 +42,8 @@ ai-service/saved_models/*.pkl
 # Large raw datasets
 dataset/raw/*.zip
 dataset/raw/*.tar.gz
+
+# SQLite runtime files
+*.sqlite-shm
+*.sqlite-wal
+*.sqlite-journal

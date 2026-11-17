@@ -74,8 +74,8 @@ async function loadTargetGoals() {
 
   const kpiCal = document.getElementById('kpi-target-calories');
   const kpiP = document.getElementById('kpi-target-protein');
-  if (kpiCal) kpiCal.textContent = targetGoals.calories;
-  if (kpiP) kpiP.textContent = targetGoals.protein;
+  if (kpiCal) kpiCal.textContent = Math.round(targetGoals.calories);
+  if (kpiP) kpiP.textContent = Math.round(targetGoals.protein);
 }
 
 /**
@@ -149,7 +149,7 @@ async function buildWeeklyNutritionData() {
         date: row.day_date,
         day: dayName,
         consumed: row.water || 0,
-        target: targetGoals.water
+        target: row.targets?.water_ml ?? targetGoals.water
       });
     });
   } catch (e) {

@@ -5,12 +5,13 @@
 
 const db = require('../config/database');
 const { computeNutritionTargets } = require('../utils/calculations');
+const { saveCurrentGoals } = require('./goal-history.service');
 
 /**
  * Get saved nutrition targets for a user
  * @param {number} userId
  */
-async function getUserGoals(userId) {
+async function getUserGoals(userId, date) {
   const goals = await db.query(
     `SELECT goal_id, user_id, daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee, calculated_at 
      FROM nutrition_goals 
@@ -22,7 +23,17 @@ async function getUserGoals(userId) {
     return null;
   }
 
-  const goal = goals[0];
+  let goal = goals[0];
+  if (date && goal && String(goal.calculated_at || '').slice(0, 10) > date) {
+    const historicalGoals = await db.query(
+      `SELECT history_id AS goal_id, user_id, daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee, effective_from AS calculated_at
+       FROM nutrition_goals_history
+       WHERE user_id = ? AND effective_from <= ?
+       ORDER BY effective_from DESC, history_id DESC LIMIT 1`,
+      [userId, date]
+    );
+    goal = historicalGoals[0] || null;
+  }
   return {
     ...goal,
     disclaimer: 'Note: These calculations are estimates based on scientific formulas (Mifflin-St Jeor) and are not medical prescriptions. Individual metabolic needs may vary.'
@@ -51,40 +62,44 @@ async function calculateGoals(userId, metricsOverride = {}) {
 
   const base = profiles[0] || {};
   const merged = {
-    age: metricsOverride.age || base.age,
-    gender: metricsOverride.gender || base.gender,
-    height_cm: metricsOverride.height_cm || base.height_cm,
-    weight_kg: metricsOverride.weight_kg || base.weight_kg,
-    activity_level: metricsOverride.activity_level || base.activity_level,
-    fitness_goal: metricsOverride.fitness_goal || base.fitness_goal
+    age: metricsOverride.age ?? base.age,
+    gender: metricsOverride.gender ?? base.gender,
+    height_cm: metricsOverride.height_cm ?? base.height_cm,
+    weight_kg: metricsOverride.weight_kg ?? base.weight_kg,
+    activity_level: metricsOverride.activity_level ?? base.activity_level,
+    fitness_goal: metricsOverride.fitness_goal ?? base.fitness_goal
   };
+
+  if (Object.values(merged).some(value => value === undefined || value === null)) {
+    const error = new Error('Complete profile details are required to calculate nutrition goals.');
+    error.statusCode = 400;
+    throw error;
+  }
 
   const calculated = computeNutritionTargets(merged);
 
-  await db.query(
-    `INSERT INTO nutrition_goals (user_id, daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE 
-       daily_calories = VALUES(daily_calories),
-       protein_g = VALUES(protein_g),
-       carbs_g = VALUES(carbs_g),
-       fat_g = VALUES(fat_g),
-       water_ml = VALUES(water_ml),
-       bmi = VALUES(bmi),
-       bmr = VALUES(bmr),
-       tdee = VALUES(tdee)`,
-    [
-      userId,
-      calculated.daily_calories,
-      calculated.protein_g,
-      calculated.carbs_g,
-      calculated.fat_g,
-      calculated.water_ml,
-      calculated.bmi,
-      calculated.bmr,
-      calculated.tdee
-    ]
-  );
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    if (profiles.length) {
+      await connection.query(
+        `UPDATE user_profiles SET age = ?, gender = ?, height_cm = ?, weight_kg = ?, activity_level = ?, fitness_goal = ? WHERE user_id = ?`,
+        [merged.age, merged.gender, merged.height_cm, merged.weight_kg, merged.activity_level, merged.fitness_goal, userId]
+      );
+    } else {
+      await connection.query(
+        `INSERT INTO user_profiles (user_id, age, gender, height_cm, weight_kg, activity_level, fitness_goal) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [userId, merged.age, merged.gender, merged.height_cm, merged.weight_kg, merged.activity_level, merged.fitness_goal]
+      );
+    }
+    await saveCurrentGoals(connection, userId, calculated);
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 
   return calculated;
 }

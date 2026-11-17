@@ -16,7 +16,7 @@ const { getWaterByDate } = require('./water.service');
 async function getDailyProgress(userId, date) {
   const targetDate = date || new Date().toISOString().split('T')[0];
 
-  const goals = await getUserGoals(userId);
+  const goals = await getUserGoals(userId, targetDate);
 
   // Meal totals
   const mealSummary = await db.query(
@@ -125,17 +125,25 @@ async function getWeeklyProgress(userId, endDate) {
   const waterMap = new Map();
   waterRows.forEach((r) => waterMap.set(r.intake_date, r.water));
 
-  return dates.map((day_date) => {
+  return Promise.all(dates.map(async (day_date) => {
     const m = mealMap.get(day_date) || {};
+    const goals = await getUserGoals(userId, day_date);
     return {
       day_date,
       calories: Number(m.calories) || 0,
       protein: Number(m.protein) || 0,
       carbs: Number(m.carbs) || 0,
       fat: Number(m.fat) || 0,
-      water: Number(waterMap.get(day_date)) || 0
+      water: Number(waterMap.get(day_date)) || 0,
+      targets: goals ? {
+        daily_calories: Number(goals.daily_calories),
+        protein_g: Number(goals.protein_g),
+        carbs_g: Number(goals.carbs_g),
+        fat_g: Number(goals.fat_g),
+        water_ml: Number(goals.water_ml)
+      } : null
     };
-  });
+  }));
 }
 
 /**

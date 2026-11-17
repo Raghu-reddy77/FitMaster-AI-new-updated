@@ -12,6 +12,7 @@ function getLocalDateStr(d) {
 
 // ─── State ────────────────────────────────────────────────────────────────────
 let currentDate    = getLocalDateStr();
+let goalsRequestId = 0;
 let activeMealType = 'breakfast';
 let selectedFood   = null;         // { food_id|custom_food_id, food_name, ... per-100g data, isCustom }
 let userGoals      = { daily_calories: 2000, protein_g: 140, carbs_g: 220, fat_g: 60 };
@@ -131,9 +132,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   const datePicker = document.getElementById('tracker-date-picker');
   if (datePicker) {
     datePicker.value = currentDate;
-    datePicker.addEventListener('change', (e) => {
+    datePicker.addEventListener('change', async (e) => {
       currentDate = e.target.value;
-      loadDailyTrackerData();
+      const requestedDate = currentDate;
+      await loadUserGoalsFromStorage(requestedDate);
+      if (currentDate === requestedDate) await loadDailyTrackerData();
     });
   }
 
@@ -146,20 +149,23 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   setupModalListeners();
-  loadUserGoalsFromStorage();
+  await loadUserGoalsFromStorage(currentDate);
   await loadDailyTrackerData();
 });
 
-function changeDate(daysOffset) {
+async function changeDate(daysOffset) {
   const d = new Date(currentDate + 'T12:00:00');
   d.setDate(d.getDate() + daysOffset);
   currentDate = getLocalDateStr(d);
   const picker = document.getElementById('tracker-date-picker');
   if (picker) picker.value = currentDate;
-  loadDailyTrackerData();
+  const requestedDate = currentDate;
+  await loadUserGoalsFromStorage(requestedDate);
+  if (currentDate === requestedDate) await loadDailyTrackerData();
 }
 
-function loadUserGoalsFromStorage() {
+async function loadUserGoalsFromStorage(date) {
+  const requestId = ++goalsRequestId;
   const savedProfile = localStorage.getItem('fitmaster_profile');
   if (savedProfile) {
     try {
@@ -174,20 +180,24 @@ function loadUserGoalsFromStorage() {
       }
     } catch (e) {}
   }
-  api.get('/users/profile').then(res => {
+  try {
+    const res = await api.get(`/users/profile${date ? `?date=${encodeURIComponent(date)}` : ''}`);
     if (res?.data?.goal) {
       const g = res.data.goal;
+      if (requestId !== goalsRequestId) return;
       userGoals = {
-        daily_calories: g.daily_calories || 2000,
-        protein_g:      g.protein_g      || 140,
-        carbs_g:        g.carbs_g        || 220,
-        fat_g:          g.fat_g          || 60
+        daily_calories: g.daily_calories,
+        protein_g: g.protein_g,
+        carbs_g: g.carbs_g,
+        fat_g: g.fat_g
       };
       const cache = JSON.parse(localStorage.getItem('fitmaster_profile') || '{}');
-      cache.goals = userGoals;
+      if (!date || date === getLocalDateStr()) cache.goals = userGoals;
       localStorage.setItem('fitmaster_profile', JSON.stringify(cache));
     }
-  }).catch(() => {});
+  } catch {
+    // Keep the last cached goals for offline use.
+  }
 }
 
 // ─── Modal Open / Close ───────────────────────────────────────────────────────
@@ -735,9 +745,9 @@ function renderDailyBudgetAndMacros(totals) {
     bar.style.background = pct > 100 ? '#f43f5e' : 'linear-gradient(90deg,#10b981 0%,#34d399 100%)';
   }
 
-  const pT = userGoals.protein_g || 140;
-  const cT = userGoals.carbs_g   || 220;
-  const fT = userGoals.fat_g     || 60;
+  const pT = Math.round(userGoals.protein_g || 140);
+  const cT = Math.round(userGoals.carbs_g || 220);
+  const fT = Math.round(userGoals.fat_g || 60);
 
   set('consumed-protein-stat', `${Math.round(totals.protein)}g / ${pT}g`);
   set('consumed-carbs-stat',   `${Math.round(totals.carbs)}g / ${cT}g`);

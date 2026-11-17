@@ -5,12 +5,13 @@
 
 const db = require('../config/database');
 const { computeNutritionTargets } = require('../utils/calculations');
+const { saveCurrentGoals } = require('./goal-history.service');
 
 /**
  * Get profile and associated goals for a user
  * @param {number} userId
  */
-async function getUserProfile(userId) {
+async function getUserProfile(userId, date) {
   const users = await db.query(
     'SELECT user_id, name, email, created_at FROM users WHERE user_id = ?',
     [userId]
@@ -36,7 +37,17 @@ async function getUserProfile(userId) {
     [userId]
   );
 
-  const goal = goals[0] || null;
+  let goal = goals[0] || null;
+  if (date && goal && String(goal.calculated_at || '').slice(0, 10) > date) {
+    const historicalGoals = await db.query(
+      `SELECT history_id AS goal_id, daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee, effective_from AS calculated_at
+       FROM nutrition_goals_history
+       WHERE user_id = ? AND effective_from <= ?
+       ORDER BY effective_from DESC, history_id DESC LIMIT 1`,
+      [userId, date]
+    );
+    goal = historicalGoals[0] || null;
+  }
 
   return {
     user,
@@ -89,60 +100,7 @@ async function updateUserProfile(userId, profileData) {
       fitness_goal
     });
 
-    const [existingGoal] = await connection.query(
-      'SELECT goal_id FROM nutrition_goals WHERE user_id = ?',
-      [userId]
-    );
-
-    if (existingGoal.length > 0) {
-      // Snapshot old goals before overwriting (for historical tracking)
-      const [oldGoal] = await connection.query(
-        'SELECT daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee FROM nutrition_goals WHERE user_id = ?',
-        [userId]
-      );
-      if (oldGoal.length > 0) {
-        const today = new Date();
-        const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-        await connection.query(
-          `INSERT INTO nutrition_goals_history (user_id, daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee, effective_from)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [userId, oldGoal[0].daily_calories, oldGoal[0].protein_g, oldGoal[0].carbs_g, oldGoal[0].fat_g,
-           oldGoal[0].water_ml, oldGoal[0].bmi, oldGoal[0].bmr, oldGoal[0].tdee, todayStr]
-        );
-      }
-      await connection.query(
-        `UPDATE nutrition_goals 
-         SET daily_calories = ?, protein_g = ?, carbs_g = ?, fat_g = ?, water_ml = ?, bmi = ?, bmr = ?, tdee = ? 
-         WHERE user_id = ?`,
-        [
-          targets.daily_calories,
-          targets.protein_g,
-          targets.carbs_g,
-          targets.fat_g,
-          targets.water_ml,
-          targets.bmi,
-          targets.bmr,
-          targets.tdee,
-          userId
-        ]
-      );
-    } else {
-      await connection.query(
-        `INSERT INTO nutrition_goals (user_id, daily_calories, protein_g, carbs_g, fat_g, water_ml, bmi, bmr, tdee) 
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          userId,
-          targets.daily_calories,
-          targets.protein_g,
-          targets.carbs_g,
-          targets.fat_g,
-          targets.water_ml,
-          targets.bmi,
-          targets.bmr,
-          targets.tdee
-        ]
-      );
-    }
+    await saveCurrentGoals(connection, userId, targets);
 
     // Record weight in weight_history for progress tracking
     await connection.query(

@@ -4,7 +4,7 @@ const { sendSuccess } = require('../utils/response');
 async function getProfile(req, res, next) {
   try {
     const userId = req.user.userId;
-    const profile = await userService.getUserProfile(userId);
+    const profile = await userService.getUserProfile(userId, req.query.date);
     return sendSuccess(res, 200, 'User profile retrieved successfully.', profile);
   } catch (error) {
     next(error);

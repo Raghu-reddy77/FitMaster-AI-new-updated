@@ -42,9 +42,12 @@ async function getWeeklyChart(req, res, next) {
   try {
     const userId = req.user.userId;
     const weeklyData = await getWeeklyProgress(userId);
-    const chartInfo = await requestChartGeneration('weekly_trends', { user_id: userId, data: weeklyData });
+    const chartInfo = await requestChartGeneration('weekly_trends', {
+      user_id: userId,
+      data: weeklyData.filter((record) => record.has_meals)
+    });
     return sendSuccess(res, 200, 'Weekly trends chart metadata.', {
-      chart_url: chartInfo ? chartInfo.chart_url : `/api/analytics/static/weekly_trends_${userId}.png`,
+      chart_url: chartInfo ? chartInfo.chart_url : null,
       weeklyData
     });
   } catch (error) {
@@ -72,7 +75,7 @@ async function getWeightChart(req, res, next) {
     const weightData = await getWeightHistory(userId);
     const chartInfo = await requestChartGeneration('weight_history', { user_id: userId, data: weightData });
     return sendSuccess(res, 200, 'Weight chart metadata.', {
-      chart_url: chartInfo ? chartInfo.chart_url : `/api/analytics/static/weight_history_${userId}.png`,
+      chart_url: chartInfo ? chartInfo.chart_url : null,
       weightData
     });
   } catch (error) {

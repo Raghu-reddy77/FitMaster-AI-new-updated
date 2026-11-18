@@ -30,9 +30,7 @@ test('profile save synchronizes targets and retains prior-date targets', async (
   );
   const userId = inserted.insertId;
   const today = localDate();
-  const yesterdayDate = new Date();
-  yesterdayDate.setDate(yesterdayDate.getDate() - 1);
-  const yesterday = localDate(yesterdayDate);
+  const yesterday = '2020-01-01';
 
   const originalProfile = {
     age: 32,

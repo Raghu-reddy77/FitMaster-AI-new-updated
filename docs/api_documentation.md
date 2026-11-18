@@ -56,8 +56,14 @@ Authenticated routes require the header:
 ## 8. AI Recommendations (`/api/ai`)
 | Method | Endpoint | Description | Protected |
 |---|---|---|---|
+| `POST` | `/api/ai/chat` | Generate a Gemini nutrition and fitness response using the authenticated user's saved profile and goals | Yes |
 | `POST` | `/api/ai/recommendations` | Trigger AI gap analysis and generate ranked food suggestions | Yes |
 | `GET` | `/api/ai/recommendations/history` | Retrieve historical AI recommendations for the user | Yes |
+
+### Gemini chat request and configuration
+`POST /api/ai/chat` accepts `{ "message": "...", "history": [{ "role": "user" | "assistant", "content": "..." }] }`. The message is required and limited to 1,200 characters; history is optional and bounded to 8 entries. Successful responses return `data.reply`, `data.model`, and `data.generated_at`. Requests require a JWT bearer token. The user ID, profile, and saved nutrition targets are loaded server-side from the authenticated account; client-supplied identity or profile fields are ignored.
+
+The backend calls Google's official Gemini `generateContent` REST API at `https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent`. The configured default is the stable `gemini-3.5-flash-lite` model. Set `GEMINI_API_KEY` only in the backend environment, optionally configure `GEMINI_MODEL` and `GEMINI_TIMEOUT_MS`, and never place the key in frontend code or browser storage. The endpoint allows only nutrition and fitness-related questions, enforces per-user request limits, and does not provide simulated answers if Gemini is unavailable.
 
 ## 9. Analytics & Matplotlib Visualizations (`/api/analytics`)
 | Method | Endpoint | Description | Protected |

@@ -102,14 +102,6 @@ async function updateUserProfile(userId, profileData) {
 
     await saveCurrentGoals(connection, userId, targets);
 
-    // Record weight in weight_history for progress tracking
-    await connection.query(
-      `INSERT INTO weight_history (user_id, recorded_date, weight_kg, notes) 
-       VALUES (?, CURDATE(), ?, 'Profile update weigh-in') 
-       ON DUPLICATE KEY UPDATE weight_kg = VALUES(weight_kg)`,
-      [userId, weight_kg]
-    );
-
     await connection.commit();
 
     return {

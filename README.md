@@ -26,7 +26,7 @@ Built with an academic focus on architectural modularity, mathematical rigor, cl
 4. **Interactive Food & Nutrition Tracker**: Instant substring search across verified databanks, live serving size adjustment in grams ($g$), dynamic calorie/macro meters, and meal slot allocation (Breakfast, Lunch, Dinner, Snacks).
 5. **Interactive Hydration Tracker**: Fluid intake monitoring with animated circular wave gauge, interactive goal adjustments, quick-add volumes (ml), and intake history ledger.
 6. **Interactive Progress Analytics**: Responsive Chart.js client-side visualizations for daily/weekly macronutrients, bodyweight trajectory tracking with weigh-in log, and hydration consistency.
-7. **AI Nutrition Assistant Bot**: Conversational AI bot offering interactive quick questions and comprehensive answers on protein requirements, Indian high-protein meals, workout nutrition timing, fat loss plateaus, and calorie deficits.
+7. **AI Nutrition Assistant**: Authenticated Google Gemini chat for nutrition and fitness questions, personalized from the signed-in user's saved profile and nutrition targets. Configure `GEMINI_API_KEY` in the backend environment; the browser never receives the key.
 
 ---
 

@@ -93,22 +93,30 @@ def generate_weekly_chart(user_id: int, weekly_records: list) -> str:
     filename = f"weekly_trends_{user_id}.png"
     filepath = os.path.join(CHARTS_DIR, filename)
 
-    dates = [r.get('day_date', '')[-5:] for r in weekly_records] or ['D1', 'D2', 'D3', 'D4', 'D5', 'D6', 'D7']
-    cals = [float(r.get('calories', 0)) for r in weekly_records] or [0]*7
-
     fig, ax = plt.subplots(figsize=(9, 4.2), dpi=150)
-    ax.plot(dates, cals, marker='o', color='#10b981', linewidth=2.5, markersize=7, label='Caloric Intake')
-    ax.fill_between(dates, cals, color='#10b981', alpha=0.15)
-
     ax.set_title('7-Day Calorie Consumption Trend', fontsize=13, weight='bold', pad=12, color='#10b981')
-    ax.set_xlabel('Date (MM-DD)', fontsize=10)
+    ax.set_xlabel('Date (DD/MM/YYYY)', fontsize=10)
     ax.set_ylabel('Energy (kcal)', fontsize=10)
     ax.grid(True)
-    ax.legend(loc='upper right')
-
-    for i, txt in enumerate(cals):
-        if txt > 0:
-            ax.annotate(f"{int(txt)}", (dates[i], cals[i]), textcoords="offset points", xytext=(0, 6), ha='center', color='#ffffff', fontsize=9)
+    records = [record for record in weekly_records if record.get('has_meals', True)]
+    if records:
+        records = sorted(records, key=lambda record: str(record.get('day_date', '')))
+        dates = [
+            f'{date[8:10]}/{date[5:7]}/{date[:4]}'
+            for date in (str(record.get('day_date', ''))[:10] for record in records)
+        ]
+        cals = [float(record.get('calories', 0)) for record in records]
+        positions = np.arange(len(records))
+        ax.plot(positions, cals, marker='o', color='#10b981', linewidth=2.5, markersize=7, label='Caloric Intake')
+        ax.fill_between(positions, cals, color='#10b981', alpha=0.15)
+        ax.set_xticks(positions, dates)
+        ax.legend(loc='upper right')
+        ax.tick_params(axis='x', labelrotation=30)
+        for i, value in enumerate(cals):
+            ax.annotate(f"{int(value)}", (dates[i], value), textcoords="offset points", xytext=(0, 6), ha='center', color='#ffffff', fontsize=9)
+    else:
+        ax.text(0.5, 0.5, 'No calorie history recorded yet.', transform=ax.transAxes, ha='center', va='center', color='#94a3b8')
+        ax.set_xticks([])
 
     plt.tight_layout()
     plt.savefig(filepath, bbox_inches='tight', facecolor=fig.get_facecolor())
@@ -121,22 +129,36 @@ def generate_weight_chart(user_id: int, weight_records: list) -> str:
     filename = f"weight_history_{user_id}.png"
     filepath = os.path.join(CHARTS_DIR, filename)
 
-    if not weight_records:
-        dates = ['Baseline', 'Current']
-        weights = [70.0, 70.0]
-    else:
-        dates = [r.get('recorded_date', '')[-5:] for r in weight_records]
-        weights = [float(r.get('weight_kg', 0)) for r in weight_records]
+    valid_records = []
+    for record in weight_records:
+        raw_date = record.get('recorded_date') or record.get('date')
+        try:
+            weight = float(record.get('weight_kg'))
+        except (TypeError, ValueError):
+            continue
+        if raw_date and weight > 0:
+            valid_records.append((str(raw_date)[:10], weight))
+
+    valid_records.sort(key=lambda item: item[0])
+    dates = [f'{date[8:10]}/{date[5:7]}/{date[:4]}' for date, _ in valid_records]
+    weights = [weight for _, weight in valid_records]
 
     fig, ax = plt.subplots(figsize=(9, 4.2), dpi=150)
-    ax.plot(dates, weights, marker='s', color='#3b82f6', linewidth=2.5, markersize=7, label='Bodyweight')
-    ax.fill_between(dates, weights, color='#3b82f6', alpha=0.15)
+    positions = np.arange(len(valid_records))
+    ax.plot(positions, weights, marker='s', color='#3b82f6', linewidth=2.5, markersize=7, label='Bodyweight')
+    ax.fill_between(positions, weights, color='#3b82f6', alpha=0.15)
 
     ax.set_title('Weight Progress Trajectory (kg)', fontsize=13, weight='bold', pad=12, color='#3b82f6')
-    ax.set_xlabel('Date', fontsize=10)
+    ax.set_xlabel('Date (DD/MM/YYYY)', fontsize=10)
     ax.set_ylabel('Weight (kg)', fontsize=10)
     ax.grid(True)
-    ax.legend(loc='best')
+    if weights:
+        ax.set_xticks(positions, dates)
+        ax.tick_params(axis='x', labelrotation=30)
+        ax.legend(loc='best')
+    else:
+        ax.text(0.5, 0.5, 'No weight measurements recorded yet.', transform=ax.transAxes, ha='center', va='center', color='#94a3b8')
+        ax.set_xticks([])
 
     for i, w in enumerate(weights):
         ax.annotate(f"{w:.1f} kg", (dates[i], weights[i]), textcoords="offset points", xytext=(0, 6), ha='center', color='#ffffff', fontsize=9, weight='bold')

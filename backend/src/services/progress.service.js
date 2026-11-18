@@ -91,13 +91,9 @@ async function getWeeklyProgress(userId, endDate) {
   const targetEnd = endDate || new Date().toISOString().split('T')[0];
   const endDateObj = new Date(targetEnd);
 
-  const dates = [];
-  for (let i = 6; i >= 0; i--) {
-    const d = new Date(endDateObj);
-    d.setDate(d.getDate() - i);
-    dates.push(d.toISOString().split('T')[0]);
-  }
-  const startDate = dates[0];
+  const startDateObj = new Date(endDateObj);
+  startDateObj.setDate(startDateObj.getDate() - 6);
+  const startDate = startDateObj.toISOString().split('T')[0];
 
   const mealRows = await db.query(
     `SELECT meal_date, 
@@ -125,7 +121,11 @@ async function getWeeklyProgress(userId, endDate) {
   const waterMap = new Map();
   waterRows.forEach((r) => waterMap.set(r.intake_date, r.water));
 
-  return Promise.all(dates.map(async (day_date) => {
+  const recordedDates = [...new Set([...mealMap.keys(), ...waterMap.keys()])]
+    .filter((date) => date >= startDate && date <= targetEnd)
+    .sort();
+
+  return Promise.all(recordedDates.map(async (day_date) => {
     const m = mealMap.get(day_date) || {};
     const goals = await getUserGoals(userId, day_date);
     return {
@@ -135,6 +135,8 @@ async function getWeeklyProgress(userId, endDate) {
       carbs: Number(m.carbs) || 0,
       fat: Number(m.fat) || 0,
       water: Number(waterMap.get(day_date)) || 0,
+      has_meals: mealMap.has(day_date),
+      has_water: waterMap.has(day_date),
       targets: goals ? {
         daily_calories: Number(goals.daily_calories),
         protein_g: Number(goals.protein_g),
@@ -184,13 +186,51 @@ async function getMonthlyProgress(userId, endDate) {
  */
 async function logWeight(userId, weightKg, recordedDate, notes = '') {
   const date = recordedDate || new Date().toISOString().split('T')[0];
+  const dateMatch = /^\d{4}-\d{2}-\d{2}$/.test(date);
+  const parsedDate = dateMatch ? new Date(`${date}T00:00:00Z`) : null;
+  if (!parsedDate || parsedDate.toISOString().slice(0, 10) !== date) {
+    const error = new Error('Measurement date must be a valid YYYY-MM-DD date.');
+    error.statusCode = 400;
+    throw error;
+  }
 
-  await db.query(
-    `INSERT INTO weight_history (user_id, recorded_date, weight_kg, notes) 
-     VALUES (?, ?, ?, ?)
-     ON DUPLICATE KEY UPDATE weight_kg = VALUES(weight_kg), notes = VALUES(notes)`,
-    [userId, date, parseFloat(weightKg), notes]
-  );
+  const weight = Number(weightKg);
+  if (!Number.isFinite(weight) || weight <= 0) {
+    const error = new Error('Weight must be a positive number.');
+    error.statusCode = 400;
+    throw error;
+  }
+
+  // Update an existing same-day record when present; this works with both
+  // schemas and does not rely on a MySQL-only uniqueness constraint.
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
+    const [existing] = await connection.query(
+      `SELECT weight_id FROM weight_history
+       WHERE user_id = ? AND recorded_date = ?
+       ORDER BY weight_id DESC LIMIT 1`,
+      [userId, date]
+    );
+
+    if (existing.length) {
+      await connection.query(
+        'UPDATE weight_history SET weight_kg = ?, notes = ? WHERE weight_id = ? AND user_id = ?',
+        [weight, notes, existing[0].weight_id, userId]
+      );
+    } else {
+      await connection.query(
+        'INSERT INTO weight_history (user_id, recorded_date, weight_kg, notes) VALUES (?, ?, ?, ?)',
+        [userId, date, weight, notes]
+      );
+    }
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 
   return await getWeightHistory(userId);
 }
@@ -201,13 +241,18 @@ async function logWeight(userId, weightKg, recordedDate, notes = '') {
  * @param {number} limit
  */
 async function getWeightHistory(userId, limit = 30) {
+  const safeLimit = Math.min(500, Math.max(1, parseInt(limit, 10) || 30));
   const history = await db.query(
-    `SELECT weight_id, user_id, recorded_date, weight_kg, notes, created_at 
-     FROM weight_history 
-     WHERE user_id = ? 
-     ORDER BY recorded_date ASC 
-     LIMIT ?`,
-    [userId, parseInt(limit, 10) || 30]
+    `SELECT weight_id, user_id, recorded_date, weight_kg, notes, created_at
+     FROM (
+       SELECT weight_id, user_id, recorded_date, weight_kg, notes, created_at
+       FROM weight_history
+       WHERE user_id = ? AND (notes IS NULL OR notes <> 'Profile update weigh-in')
+       ORDER BY recorded_date DESC, weight_id DESC
+       LIMIT ?
+     ) AS recent_history
+     ORDER BY recorded_date ASC, weight_id ASC`,
+    [userId, safeLimit]
   );
   return history;
 }

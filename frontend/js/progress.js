@@ -11,10 +11,49 @@ function getLocalDateStr(d) {
   return `${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,'0')}-${String(dt.getDate()).padStart(2,'0')}`;
 }
 
-function getDateDaysAgo(daysAgo) {
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return getLocalDateStr(d);
+function normalizeHistoryDate(value) {
+  if (value instanceof Date && !Number.isNaN(value.getTime())) {
+    return getLocalDateStr(value);
+  }
+
+  const raw = String(value ?? '').trim();
+  const isoMatch = raw.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (isoMatch) {
+    const [, year, month, day] = isoMatch;
+    const parsed = new Date(`${year}-${month}-${day}T00:00:00Z`);
+    return parsed.toISOString().slice(0, 10) === `${year}-${month}-${day}` ? `${year}-${month}-${day}` : null;
+  }
+
+  const slashMatch = raw.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (slashMatch) {
+    const [, day, month, year] = slashMatch;
+    const parsed = new Date(`${year}-${month}-${day}T00:00:00Z`);
+    return parsed.toISOString().slice(0, 10) === `${year}-${month}-${day}` ? `${year}-${month}-${day}` : null;
+  }
+  return null;
+}
+
+function formatHistoryDate(value) {
+  const date = normalizeHistoryDate(value);
+  if (!date) return '—';
+  const [year, month, day] = date.split('-');
+  return `${day}/${month}/${year}`;
+}
+
+function normalizeWeighIns(rows) {
+  if (!Array.isArray(rows)) return [];
+  return rows.map((row) => {
+    const date = normalizeHistoryDate(row.recorded_date ?? row.recordedDate ?? row.date);
+    const weight = Number(row.weight_kg ?? row.weightKg);
+    const id = row.weight_id ?? row.id;
+    if (!date || id === undefined || id === null || !Number.isFinite(weight) || weight <= 0) return null;
+    return {
+      id,
+      date,
+      weight_kg: weight,
+      notes: row.notes || ''
+    };
+  }).filter(Boolean).sort((a, b) => a.date.localeCompare(b.date) || Number(a.id) - Number(b.id));
 }
 
 let activeTab = 'macros';
@@ -95,25 +134,16 @@ window.switchAnalyticsTab = function(tabName) {
  * Fetch data from backend as primary source
  */
 async function loadAnalyticsData() {
-  // 1. Load weigh-ins from backend
+  // Weight and nutrition history must be server records for the authenticated user.
   try {
     const res = await api.get('/progress/weight');
-    // Backend returns array; normalize field names (recorded_date vs date)
-    weighInsData = (res?.data || []).map(w => ({
-      id: w.weight_id,
-      date: w.recorded_date || w.date,
-      weight_kg: w.weight_kg,
-      notes: w.notes || ''
-    }));
-  } catch {
-    // Offline fallback
-    weighInsData = JSON.parse(localStorage.getItem('fitmaster_weigh_ins') || '[]');
+    weighInsData = normalizeWeighIns(res?.data);
+  } catch (error) {
+    console.warn('Could not load authenticated weigh-in history:', error);
+    weighInsData = [];
   }
 
-  // Do NOT generate fake data when empty — show proper empty state
-  // weighInsData stays [] if the user has no entries yet
-
-  // 2. Load weekly nutrition data from backend API
+  // Load only dates containing genuine meal or water records.
   await buildWeeklyNutritionData();
 
   // 3. Update KPI cards
@@ -133,9 +163,9 @@ async function buildWeeklyNutritionData() {
   try {
     // Use backend /progress/weekly endpoint (returns 7 days)
     const res = await api.get('/progress/weekly');
-    const rows = res?.data || [];
+    const rows = Array.isArray(res?.data) ? res.data : [];
 
-    rows.forEach((row) => {
+    rows.filter((row) => row.has_meals).forEach((row) => {
       const dayName = new Date(row.day_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short' });
       weeklyNutritionData.push({
         date: row.day_date,
@@ -145,6 +175,10 @@ async function buildWeeklyNutritionData() {
         carbs: row.carbs || 0,
         fat: row.fat || 0
       });
+    });
+
+    rows.filter((row) => row.has_water).forEach((row) => {
+      const dayName = new Date(row.day_date + 'T12:00:00').toLocaleDateString([], { weekday: 'short' });
       weeklyWaterData.push({
         date: row.day_date,
         day: dayName,
@@ -153,35 +187,13 @@ async function buildWeeklyNutritionData() {
       });
     });
   } catch (e) {
-    console.warn('Weekly data fetch failed, building from localStorage:', e);
-    // Offline fallback: read localStorage but DO NOT generate fake mock data
-    for (let i = 6; i >= 0; i--) {
-      const dateStr = getDateDaysAgo(i);
-      const dayName = new Date(dateStr + 'T12:00:00').toLocaleDateString([], { weekday: 'short' });
-
-      const meals = JSON.parse(localStorage.getItem(`fitmaster_meals_${dateStr}`) || '[]');
-      let dayCal = 0, dayP = 0, dayC = 0, dayF = 0;
-
-      meals.forEach((m) => {
-        (m.items || []).forEach((item) => {
-          dayCal += Number(item.calories || 0);
-          dayP += Number(item.protein || 0);
-          dayC += Number(item.carbs || 0);
-          dayF += Number(item.fat || 0);
-        });
-      });
-
-      const waterConsumed = Number(localStorage.getItem(`fitmaster_water_${dateStr}`) || 0);
-
-      weeklyNutritionData.push({ date: dateStr, day: dayName, calories: dayCal, protein: dayP, carbs: dayC, fat: dayF });
-      weeklyWaterData.push({ date: dateStr, day: dayName, consumed: waterConsumed, target: targetGoals.water });
-    }
+    console.warn('Could not load authenticated nutrition history:', e);
   }
 }
 
 function updateKPISummaries() {
   // Average calories & protein (from backend data)
-  const validDays = weeklyNutritionData.filter((d) => d.calories > 0);
+  const validDays = weeklyNutritionData;
   const avgCal = validDays.length > 0 ? Math.round(validDays.reduce((s, d) => s + d.calories, 0) / validDays.length) : 0;
   const avgP = validDays.length > 0 ? Math.round(validDays.reduce((s, d) => s + d.protein, 0) / validDays.length) : 0;
 
@@ -194,16 +206,21 @@ function updateKPISummaries() {
   const kpiWeight = document.getElementById('kpi-current-weight');
   const kpiWeightChange = document.getElementById('kpi-weight-change');
   if (weighInsData.length > 0) {
-    const sorted = [...weighInsData].sort((a, b) => new Date(a.date) - new Date(b.date));
+    const sorted = normalizeWeighIns(weighInsData);
     const latest = sorted[sorted.length - 1];
-    const first = sorted[0];
-    const diff = (latest.weight_kg - first.weight_kg).toFixed(1);
+    const previous = sorted[sorted.length - 2];
 
     if (kpiWeight) kpiWeight.textContent = `${latest.weight_kg} kg`;
     if (kpiWeightChange) {
-      const sign = diff > 0 ? '+' : '';
-      kpiWeightChange.textContent = `${sign}${diff} kg from starting log`;
-      kpiWeightChange.style.color = diff < 0 ? '#10b981' : (diff > 0 ? '#60a5fa' : 'var(--text-muted)');
+      if (previous) {
+        const diff = (latest.weight_kg - previous.weight_kg).toFixed(1);
+        const sign = diff > 0 ? '+' : '';
+        kpiWeightChange.textContent = `${sign}${diff} kg since previous measurement`;
+        kpiWeightChange.style.color = diff < 0 ? '#10b981' : (diff > 0 ? '#60a5fa' : 'var(--text-muted)');
+      } else {
+        kpiWeightChange.textContent = 'One measurement recorded';
+        kpiWeightChange.style.color = 'var(--text-muted)';
+      }
     }
   } else {
     if (kpiWeight) kpiWeight.textContent = '— kg';
@@ -215,7 +232,7 @@ function updateKPISummaries() {
   const fulfilledDays = weeklyWaterData.filter((d) => d.consumed > 0 && d.consumed >= d.target).length;
   const rate = totalWaterDays > 0 ? Math.round((fulfilledDays / totalWaterDays) * 100) : 0;
   const kpiHydration = document.getElementById('kpi-hydration-rate');
-  if (kpiHydration) kpiHydration.textContent = `${rate}%`;
+  if (kpiHydration) kpiHydration.textContent = totalWaterDays > 0 ? `${rate}%` : '—%';
 }
 
 /**
@@ -232,7 +249,11 @@ function renderActiveChart() {
   const ctx = canvas.getContext('2d');
 
   if (activeTab === 'macros') {
-    const labels = weeklyNutritionData.map((d) => `${d.day} (${d.date.slice(5)})`);
+    if (weeklyNutritionData.length === 0) {
+      drawChartEmptyState(ctx, canvas, 'No calorie or macronutrient history recorded yet.');
+      return;
+    }
+    const labels = weeklyNutritionData.map((d) => formatHistoryDate(d.date));
     const calories = weeklyNutritionData.map((d) => d.calories);
     const protein = weeklyNutritionData.map((d) => d.protein);
     const carbs = weeklyNutritionData.map((d) => d.carbs);
@@ -264,15 +285,12 @@ function renderActiveChart() {
       }
     });
   } else if (activeTab === 'weight') {
-    const sorted = [...weighInsData].sort((a, b) => new Date(a.date) - new Date(b.date));
-    const labels = sorted.map((d) => d.date);
+    const sorted = normalizeWeighIns(weighInsData);
+    const labels = sorted.map((d) => formatHistoryDate(d.date));
     const weights = sorted.map((d) => d.weight_kg);
 
     if (sorted.length === 0) {
-      ctx.fillStyle = '#94a3b8';
-      ctx.font = '14px Inter';
-      ctx.textAlign = 'center';
-      ctx.fillText('No weight data yet. Log your first weigh-in below!', canvas.width / 2, canvas.height / 2);
+      drawChartEmptyState(ctx, canvas, 'No weight measurements recorded yet. Log your first weigh-in below.');
       return;
     }
 
@@ -312,7 +330,11 @@ function renderActiveChart() {
       }
     });
   } else if (activeTab === 'water') {
-    const labels = weeklyWaterData.map((d) => `${d.day} (${d.date.slice(5)})`);
+    if (weeklyWaterData.length === 0) {
+      drawChartEmptyState(ctx, canvas, 'No hydration history recorded yet.');
+      return;
+    }
+    const labels = weeklyWaterData.map((d) => formatHistoryDate(d.date));
     const consumed = weeklyWaterData.map((d) => d.consumed);
     const targets = weeklyWaterData.map((d) => d.target);
 
@@ -341,6 +363,14 @@ function renderActiveChart() {
   }
 }
 
+function drawChartEmptyState(ctx, canvas, message) {
+  ctx.fillStyle = '#94a3b8';
+  ctx.font = '14px Inter';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(message, canvas.width / 2, canvas.height / 2, canvas.width - 40);
+}
+
 /**
  * Render historical weight table
  */
@@ -349,15 +379,16 @@ function renderWeighInTable() {
   const countLabel = document.getElementById('weight-count-label');
   if (!tbody) return;
 
-  if (countLabel) countLabel.textContent = `${weighInsData.length} entries`;
+  const validEntries = normalizeWeighIns(weighInsData);
+  if (countLabel) countLabel.textContent = `${validEntries.length} entries`;
 
-  if (weighInsData.length === 0) {
+  if (validEntries.length === 0) {
     tbody.innerHTML = `<tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 20px;">No weigh-ins logged yet. Use the form below to record your first entry!</td></tr>`;
     return;
   }
 
   // Sort latest first
-  const sorted = [...weighInsData].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const sorted = [...validEntries].sort((a, b) => b.date.localeCompare(a.date) || Number(b.id) - Number(a.id));
 
   tbody.innerHTML = sorted.map((entry, idx) => {
     const nextEntry = sorted[idx + 1]; // older entry
@@ -379,7 +410,7 @@ function renderWeighInTable() {
 
     return `
       <tr>
-        <td style="font-weight: 600; color: #ffffff;">${entry.date}</td>
+        <td style="font-weight: 600; color: #ffffff;">${formatHistoryDate(entry.date)}</td>
         <td style="font-family: var(--font-heading); font-weight: 700; color: var(--primary-light);">${entry.weight_kg} kg</td>
         <td style="font-weight: 600; color: ${deltaColor};">${deltaStr}</td>
         <td style="color: var(--text-muted); font-size: 13px;">${entry.notes || '—'}</td>
@@ -409,28 +440,14 @@ window.handleWeightSubmit = async function(e) {
   try {
     // Backend is primary — saves to weight_history table
     const res = await api.post('/progress/weight', { recorded_date: date, weight_kg: weight, notes });
-    // Reload from backend to get real IDs
-    const histRes = await api.get('/progress/weight');
-    weighInsData = (histRes?.data || []).map(w => ({
-      id: w.weight_id,
-      date: w.recorded_date || w.date,
-      weight_kg: w.weight_kg,
-      notes: w.notes || ''
-    }));
+    await loadAnalyticsData();
     showToast('Weigh-In Saved', `${weight} kg recorded for ${date}!`, 'success');
   } catch (err) {
-    console.warn('Backend weight log failed, saving locally:', err);
-    // Offline fallback
-    const newEntry = { id: Date.now(), date, weight_kg: weight, notes };
-    weighInsData.push(newEntry);
-    localStorage.setItem('fitmaster_weigh_ins', JSON.stringify(weighInsData));
-    showToast('Weigh-In Saved (Offline)', `${weight} kg saved locally.`, 'info');
+    console.warn('Backend weight log failed:', err);
+    showToast('Weigh-In Not Saved', err.message || 'Could not save your measurement. Please try again.', 'error');
   }
 
   document.getElementById('weight-notes').value = '';
-  updateKPISummaries();
-  renderWeighInTable();
-  renderActiveChart();
 };
 
 /**
@@ -439,24 +456,14 @@ window.handleWeightSubmit = async function(e) {
 window.deleteWeighIn = async function(id) {
   try {
     await api.delete(`/progress/weight/${id}`);
-    // Reload from backend
-    const histRes = await api.get('/progress/weight');
-    weighInsData = (histRes?.data || []).map(w => ({
-      id: w.weight_id,
-      date: w.recorded_date || w.date,
-      weight_kg: w.weight_kg,
-      notes: w.notes || ''
-    }));
+    await loadAnalyticsData();
   } catch (err) {
-    console.warn('Backend weight delete failed, removing locally:', err);
-    weighInsData = weighInsData.filter((w) => w.id !== id);
-    localStorage.setItem('fitmaster_weigh_ins', JSON.stringify(weighInsData));
+    console.warn('Backend weight delete failed:', err);
+    showToast('Record Not Removed', err.message || 'Could not delete the measurement.', 'error');
+    return;
   }
 
   showToast('Record Removed', 'Weigh-in entry removed.', 'info');
-  updateKPISummaries();
-  renderWeighInTable();
-  renderActiveChart();
 };
 
 window.loadAnalyticsData = loadAnalyticsData;
